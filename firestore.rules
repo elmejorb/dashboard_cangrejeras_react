@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== FUNCIONES HELPER =====
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['Admin', 'Super Admin'];
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'Super Admin';
+    }
+
+    function isFanUser() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ===== ADMINISTRADORES (Dashboard CMS) =====
+    match /admins/{adminId} {
+      // Solo admins pueden leer otros perfiles
+      allow read: if isAdmin() || isOwner(adminId);
+
+      // Solo pueden actualizar su propio perfil (excepto rol y permisos)
+      allow update: if isOwner(adminId) &&
+                      !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['role', 'permissions', 'email']);
+
+      // Solo Super Admins pueden crear/eliminar/modificar roles
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+    }
+
+    // ===== USUARIOS DE LA APP (Fans) =====
+    match /users/{userId} {
+      // Cualquier usuario autenticado puede leer perfiles de fans
+      allow read: if isAuthenticated();
+
+      // Los fans pueden crear y actualizar su propio perfil
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) &&
+                      !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['votesCount']);
+
+      // Solo admins pueden eliminar usuarios
+      allow delete: if isAdmin();
+
+      // Admins pueden leer/actualizar todos los usuarios
+      allow read, update: if isAdmin();
+    }
+
+    // ===== JUGADORAS =====
+    match /players/{playerId} {
+      // Todos pueden leer (incluso sin autenticar para la app pública)
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== PARTIDOS =====
+    match /matches/{matchId} {
+      // Todos pueden leer
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== VOTACIONES =====
+    match /votings/{votingId} {
+      // Todos pueden leer votaciones
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar votaciones
+      allow create, update, delete: if isAdmin();
+
+      // SUB-COLECCIÓN: VOTOS
+      match /votes/{voteId} {
+        // Usuarios autenticados pueden leer votos
+        allow read: if isAuthenticated();
+
+        // Solo pueden votar usuarios autenticados (1 voto por usuario por votación)
+        // El voteId debe ser igual al userId para garantizar 1 voto por usuario
+        allow create: if isAuthenticated() &&
+                        voteId == request.auth.uid &&
+                        request.resource.data.userId == request.auth.uid &&
+                        // La votación debe estar activa
+                        get(/databases/$(database)/documents/votings/$(votingId)).data.status == 'active';
+
+        // No se pueden modificar ni eliminar votos una vez emitidos
+        allow update, delete: if false;
+
+        // Admins pueden ver todos los votos
+        allow read: if isAdmin();
+      }
+    }
+
+    // ===== NOTICIAS =====
+    match /news/{newsId} {
+      // Todos pueden leer noticias publicadas
+      allow read: if resource.data.status == 'published';
+
+      // Admins y editores pueden ver borradores propios
+      allow read: if isAuthenticated() &&
+                    (isAdmin() || resource.data.author == request.auth.uid);
+
+      // Admins y editores pueden crear noticias
+      allow create: if isAdmin() ||
+                      (isAuthenticated() &&
+                       exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'Editor');
+
+      // Solo el autor o admins pueden modificar
+      allow update: if isAdmin() ||
+                      (isAuthenticated() && resource.data.author == request.auth.uid);
+
+      // Solo Super Admins pueden eliminar
+      allow delete: if isSuperAdmin();
+    }
+
+    // ===== ESTADÍSTICAS =====
+    match /stats/{document=**} {
+      // Todos pueden leer estadísticas
+      allow read: if true;
+
+      // Solo admins pueden actualizar
+      allow write: if isAdmin();
+    }
+
+    // ===== DENEGAR TODO LO DEMÁS =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
