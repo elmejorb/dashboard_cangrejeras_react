@@ -1,0 +1,780 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --background: #F2F4F7;
+  --foreground: #0F172A;
+  --card: #ffffff;
+  --card-foreground: #0F172A;
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #030213;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #475569;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Team Colors */
+  --team-navy: #0C2340;
+  --team-gold: #C8A963;
+  --live-red: #E01E37;
+  --action-red: #E84C4C;
+  --success-green: #10B981;
+  --warning-orange: #F97316;
+  --team-purple: #8B5CF6;
+  --team-pink: #EC4899;
+  --text-dark: #0F172A;
+  --text-light: #F1F5F9;
+  --muted-text: #94A3B8;
+  
+  /* Glassmorphism System */
+  --glass-bg-light: rgba(255, 255, 255, 0.85);
+  --glass-bg-dark: rgba(30, 41, 59, 0.85);
+  --glass-border-light: rgba(0, 0, 0, 0.08);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
+  --glass-blur: 20px;
+  
+  /* Shadow System */
+  --shadow-sm-light: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md-light: 0 4px 16px 0 rgba(0, 0, 0, 0.08);
+  --shadow-lg-light: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+  --shadow-xl-light: 0 12px 48px 0 rgba(0, 0, 0, 0.15);
+  
+  --shadow-sm-dark: 0 2px 8px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md-dark: 0 4px 16px 0 rgba(0, 0, 0, 0.4);
+  --shadow-lg-dark: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --shadow-xl-dark: 0 12px 48px 0 rgba(0, 0, 0, 0.6);
+  
+  /* Spacing System */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.25rem;
+  --spacing-xl: 1.5rem;
+  --spacing-2xl: 2rem;
+  
+  /* Transition System */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dark {
+  --background: #0F172A;
+  --foreground: #F1F5F9;
+  --card: #1e293b;
+  --card-foreground: #F1F5F9;
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: #94A3B8;
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+/* Custom animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes slide-in-top {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer-bg {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes shimmer-glow {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes picker-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(200, 169, 99, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(200, 169, 99, 0.5), 0 0 12px rgba(200, 169, 99, 0.2);
+  }
+}
+
+@keyframes picker-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slide-in-top {
+  animation: slide-in-top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+.animate-shimmer-glow {
+  animation: shimmer-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-shimmer-bg {
+  animation: shimmer-bg 2s linear infinite;
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+/* Modern select styling */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23C8A963' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23C8A963' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Smooth focus transitions */
+input:focus,
+textarea:focus,
+select:focus {
+  transform: translateY(-1px);
+}
+
+/* Custom styling for date and time inputs */
+input[type="date"],
+input[type="time"] {
+  position: relative;
+  cursor: pointer;
+  padding-right: 3rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Calendar and Clock Picker Indicators */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all var(--transition-base);
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  background: rgba(200, 169, 99, 0.1);
+  margin-right: 0.25rem;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background: rgba(200, 169, 99, 0.2);
+  transform: scale(1.1);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:active,
+input[type="time"]::-webkit-calendar-picker-indicator:active {
+  transform: scale(0.95);
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  background: rgba(200, 169, 99, 0.15);
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  background: rgba(200, 169, 99, 0.25);
+}
+
+/* Fields Wrapper */
+input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background var(--transition-base);
+}
+
+input[type="time"]:hover::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]:hover::-webkit-datetime-edit-fields-wrapper {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+input[type="time"]:focus::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]:focus::-webkit-datetime-edit-fields-wrapper {
+  background: rgba(200, 169, 99, 0.08);
+}
+
+.dark input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dark input[type="time"]:hover::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="date"]:hover::-webkit-datetime-edit-fields-wrapper {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark input[type="time"]:focus::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="date"]:focus::-webkit-datetime-edit-fields-wrapper {
+  background: rgba(200, 169, 99, 0.12);
+}
+
+/* Text separators between fields */
+input[type="time"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-text {
+  padding: 0 0.25rem;
+  color: rgba(200, 169, 99, 0.6);
+  font-weight: 500;
+}
+
+/* Time picker fields */
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  transition: all var(--transition-base);
+  font-weight: 500;
+  min-width: 2rem;
+  text-align: center;
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field:hover,
+input[type="time"]::-webkit-datetime-edit-minute-field:hover,
+input[type="time"]::-webkit-datetime-edit-ampm-field:hover {
+  background: rgba(200, 169, 99, 0.15);
+  transform: scale(1.05);
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
+  background: linear-gradient(135deg, rgba(200, 169, 99, 0.25), rgba(200, 169, 99, 0.35));
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(200, 169, 99, 0.3);
+  transform: scale(1.08);
+  color: #C8A963;
+}
+
+/* Date picker fields */
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field {
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  transition: all var(--transition-base);
+  font-weight: 500;
+  text-align: center;
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field {
+  min-width: 3.5rem;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field {
+  min-width: 2rem;
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field:hover,
+input[type="date"]::-webkit-datetime-edit-month-field:hover,
+input[type="date"]::-webkit-datetime-edit-day-field:hover {
+  background: rgba(200, 169, 99, 0.15);
+  transform: scale(1.05);
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field:focus,
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus {
+  background: linear-gradient(135deg, rgba(200, 169, 99, 0.25), rgba(200, 169, 99, 0.35));
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(200, 169, 99, 0.3);
+  transform: scale(1.08);
+  color: #C8A963;
+}
+
+/* Placeholder styling */
+input[type="date"]::-webkit-datetime-edit-year-field[aria-valuenow]:not([aria-valuenow=""]),
+input[type="date"]::-webkit-datetime-edit-month-field[aria-valuenow]:not([aria-valuenow=""]),
+input[type="date"]::-webkit-datetime-edit-day-field[aria-valuenow]:not([aria-valuenow=""]) {
+  color: inherit;
+}
+
+/* Dark mode specific enhancements */
+.dark input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+.dark input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+.dark input[type="time"]::-webkit-datetime-edit-ampm-field:focus,
+.dark input[type="date"]::-webkit-datetime-edit-year-field:focus,
+.dark input[type="date"]::-webkit-datetime-edit-month-field:focus,
+.dark input[type="date"]::-webkit-datetime-edit-day-field:focus {
+  background: linear-gradient(135deg, rgba(200, 169, 99, 0.2), rgba(200, 169, 99, 0.3));
+  box-shadow: 0 0 0 2px rgba(200, 169, 99, 0.4);
+  color: #C8A963;
+}
+
+/* Premium focus animation for pickers */
+input[type="date"]:focus,
+input[type="time"]:focus {
+  animation: picker-glow 2s ease-in-out infinite;
+}
+
+/* Fade in and slide animations for custom pickers */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-top 0.2s ease-out;
+}
+
+.fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.slide-in-from-top-2 {
+  animation: slide-in-from-top 0.2s ease-out;
+}
+
+/* Enhanced backdrop blur for glass effect */
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Utility Classes for Consistent Design */
+.glass-card {
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: all var(--transition-base);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.glass-button {
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: all var(--transition-base);
+}
+
+.glass-button:hover {
+  transform: scale(1.05);
+}
+
+.glass-button:active {
+  transform: scale(0.98);
+}
+
+/* Smooth focus states */
+*:focus-visible {
+  outline: 2px solid var(--team-gold);
+  outline-offset: 2px;
+  transition: outline-offset var(--transition-fast);
+}
+
+/* Card elevation on hover */
+.card-interactive {
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* Smooth text transitions */
+h1, h2, h3, h4, h5, h6, p, span, button {
+  transition: color var(--transition-fast);
+}
+
+/* Improved scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(200, 169, 99, 0.3);
+  border-radius: 4px;
+  transition: background var(--transition-base);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 169, 99, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(200, 169, 99, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 169, 99, 0.4);
+}
+
+/* Smooth page transitions */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in var(--transition-base);
+}
+
+/* Safe area for mobile notches */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Custom scrollbar for modals and containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(200, 169, 99, 0.4);
+  border-radius: 3px;
+  transition: background var(--transition-base);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 169, 99, 0.6);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(200, 169, 99, 0.3);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 169, 99, 0.5);
+}
