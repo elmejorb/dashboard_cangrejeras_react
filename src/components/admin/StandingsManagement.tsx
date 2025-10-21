@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { toast } from "sonner@2.0.3";
 import { standingsService, StandingsTeam } from "../../services/standingsService";
+import { teamService } from "../../services/teamService";
 
 interface StandingsManagementProps {
   darkMode: boolean;
@@ -17,24 +18,43 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<StandingsTeam | null>(null);
   const [formData, setFormData] = useState<Partial<StandingsTeam>>({});
+  const [primaryTeamName, setPrimaryTeamName] = useState<string>('');
 
   // Load standings from Firestore
   const loadStandings = async () => {
     setIsLoading(true);
     try {
+      // Solo inicializar datos por defecto una vez
       await standingsService.initializeDefaultStandings();
       const data = await standingsService.getAllStandings();
+      console.log('📊 Standings cargados desde Firestore:', data);
       setStandings(data);
     } catch (error) {
-      console.error('Error loading standings:', error);
+      console.error('❌ Error loading standings:', error);
       toast.error('Error al cargar tabla de posiciones');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Load primary team name
+  const loadPrimaryTeam = async () => {
+    try {
+      const primaryTeam = await teamService.getPrimaryTeam();
+      if (primaryTeam) {
+        console.log('🏆 Equipo principal cargado:', primaryTeam.name);
+        setPrimaryTeamName(primaryTeam.name);
+      } else {
+        console.warn('⚠️ No se encontró equipo principal en la colección teams');
+      }
+    } catch (error) {
+      console.error('❌ Error loading primary team:', error);
+    }
+  };
+
   useEffect(() => {
     loadStandings();
+    loadPrimaryTeam();
   }, []);
 
   const getPositionTrend = (index: number) => {
@@ -76,6 +96,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
     try {
       if (editingTeam) {
         // Update existing team
+        console.log('✏️ Actualizando equipo:', editingTeam.id, formData);
         await standingsService.updateStandingsTeam(editingTeam.id, {
           name: formData.name,
           abbr: formData.abbr,
@@ -85,9 +106,11 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
           lost: formData.lost || 0,
           color: formData.color || '#0C2340',
         });
+        console.log('✅ Equipo actualizado en Firestore');
         toast.success('Equipo actualizado exitosamente');
       } else {
         // Add new team
+        console.log('➕ Creando nuevo equipo:', formData);
         await standingsService.createStandingsTeam({
           name: formData.name!,
           abbr: formData.abbr!,
@@ -97,6 +120,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
           lost: formData.lost || 0,
           color: formData.color || '#0C2340',
         });
+        console.log('✅ Equipo creado en Firestore');
         toast.success('Equipo agregado exitosamente');
       }
 
@@ -106,7 +130,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
       setFormData({});
     } catch (error) {
       toast.error('Error al guardar equipo');
-      console.error(error);
+      console.error('❌ Error al guardar:', error);
     }
   };
 
@@ -128,12 +152,14 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
   const handleMoveUp = async (id: string, index: number) => {
     if (index === 0) return;
     try {
+      console.log('⬆️ Moviendo equipo arriba:', id);
       await standingsService.moveTeamUp(id);
       await loadStandings();
+      console.log('✅ Posición actualizada en Firestore');
       toast.success('Posición actualizada');
     } catch (error) {
       toast.error('Error al actualizar posición');
-      console.error(error);
+      console.error('❌ Error al mover:', error);
     }
   };
 
@@ -141,12 +167,14 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
   const handleMoveDown = async (id: string, index: number) => {
     if (index === standings.length - 1) return;
     try {
+      console.log('⬇️ Moviendo equipo abajo:', id);
       await standingsService.moveTeamDown(id);
       await loadStandings();
+      console.log('✅ Posición actualizada en Firestore');
       toast.success('Posición actualizada');
     } catch (error) {
       toast.error('Error al actualizar posición');
-      console.error(error);
+      console.error('❌ Error al mover:', error);
     }
   };
 
@@ -161,14 +189,37 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
     );
   }
 
-  // Calculate stats
-  const cangrejerasTeam = standings.find(t => t.name.includes('Cangrejeras'));
-  const effectiveness = cangrejerasTeam
-    ? ((cangrejerasTeam.won / cangrejerasTeam.played) * 100).toFixed(1)
+  // Calculate stats using primary team
+  const primaryTeam = standings.find(t =>
+    primaryTeamName && t.name.toLowerCase().includes(primaryTeamName.toLowerCase())
+  );
+  const primaryTeamIndex = standings.findIndex(t =>
+    primaryTeamName && t.name.toLowerCase().includes(primaryTeamName.toLowerCase())
+  );
+  const primaryTeamPosition = primaryTeamIndex >= 0 ? primaryTeamIndex + 1 : 0;
+
+  // Efectividad: (Juegos Ganados / Juegos Jugados) * 100
+  const effectiveness = primaryTeam && primaryTeam.played > 0
+    ? ((primaryTeam.won / primaryTeam.played) * 100).toFixed(1)
     : '0';
-  const pointsDifference = standings.length >= 2
-    ? standings[0].points - standings[1].points
-    : 0;
+
+  // Diferencia de puntos:
+  // - Si el equipo principal está en 1°: diferencia con el 2° lugar (positivo)
+  // - Si está en otra posición: diferencia con el 1° lugar (negativo)
+  let pointsDifference = 0;
+  let pointsDifferenceText = 'Sin datos';
+
+  if (primaryTeam && standings.length >= 2) {
+    if (primaryTeamIndex === 0) {
+      // Equipo principal está en primer lugar
+      pointsDifference = standings[0].points - standings[1].points;
+      pointsDifferenceText = 'Ventaja sobre el 2° lugar';
+    } else if (primaryTeamIndex > 0) {
+      // Equipo principal está en otra posición
+      pointsDifference = primaryTeam.points - standings[0].points;
+      pointsDifferenceText = 'Diferencia con el líder';
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -372,7 +423,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
             </div>
             <div>
               <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {standings.findIndex(t => t.name.includes('Cangrejeras')) + 1}°
+                {primaryTeamPosition > 0 ? `${primaryTeamPosition}°` : 'N/A'}
               </div>
               <div className={`text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
                 Posición Actual
@@ -380,9 +431,11 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
             </div>
           </div>
           <div className={`text-xs mt-3 pt-3 border-t ${darkMode ? 'border-white/10 text-white/50' : 'border-gray-200 text-gray-500'}`}>
-            {standings[0]?.name.includes('Cangrejeras')
-              ? 'Cangrejeras lideran la tabla'
-              : `${standings.findIndex(t => t.name.includes('Cangrejeras')) > 0 ? pointsDifference + ' pts del líder' : 'Sin datos'}`
+            {primaryTeamIndex === 0
+              ? `${primaryTeamName || 'Equipo principal'} lidera la tabla`
+              : primaryTeam
+              ? `${primaryTeam.points} pts (Líder: ${standings[0]?.points || 0} pts)`
+              : primaryTeamName ? `${primaryTeamName} no está en la tabla` : 'Sin datos'
             }
           </div>
         </div>
@@ -408,7 +461,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
             </div>
           </div>
           <div className={`text-xs mt-3 pt-3 border-t ${darkMode ? 'border-white/10 text-white/50' : 'border-gray-200 text-gray-500'}`}>
-            {cangrejerasTeam ? `${cangrejerasTeam.won} victorias en ${cangrejerasTeam.played} partidos` : 'Sin datos'}
+            {primaryTeam ? `${primaryTeam.won} victorias en ${primaryTeam.played} partidos` : 'Sin datos'}
           </div>
         </div>
 
@@ -425,7 +478,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
             </div>
             <div>
               <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                +{standings.length >= 2 ? pointsDifference : 0}
+                {pointsDifference > 0 ? `+${pointsDifference}` : pointsDifference < 0 ? pointsDifference : '0'}
               </div>
               <div className={`text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
                 Diferencia de Puntos
@@ -433,10 +486,7 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
             </div>
           </div>
           <div className={`text-xs mt-3 pt-3 border-t ${darkMode ? 'border-white/10 text-white/50' : 'border-gray-200 text-gray-500'}`}>
-            {standings[0]?.name.includes('Cangrejeras')
-              ? 'Ventaja sobre el 2° lugar'
-              : standings.length >= 2 ? 'Diferencia con el líder' : 'Sin datos'
-            }
+            {pointsDifferenceText}
           </div>
         </div>
       </div>

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, User, Bell, Shield, Palette, Globe, UserPlus, Edit2, Trash2, Users, Mail, Key, Target, Plus } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { toast } from "sonner@2.0.3";
+import { adminService, AdminDocument } from "../../services/adminService";
 import {
   Dialog,
   DialogContent,
@@ -39,9 +40,11 @@ interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'Super Admin' | 'Admin' | 'Editor' | 'Moderador';
-  status: 'Activo' | 'Inactivo';
-  lastLogin: string;
+  role: 'Super Admin' | 'Admin' | 'Editor';
+  status: 'active' | 'inactive';
+  lastLogin?: Date;
+  avatar?: string;
+  phone?: string;
 }
 
 export function SettingsManagement({ darkMode }: SettingsManagementProps) {
@@ -68,32 +71,8 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
   });
 
   // User Management State
-  const [users, setUsers] = useState<AdminUser[]>([
-    {
-      id: '1',
-      name: 'Admin Principal',
-      email: 'admin@cangrejeras.com',
-      role: 'Super Admin',
-      status: 'Activo',
-      lastLogin: '2025-10-08 10:30 AM'
-    },
-    {
-      id: '2',
-      name: 'María González',
-      email: 'maria@cangrejeras.com',
-      role: 'Admin',
-      status: 'Activo',
-      lastLogin: '2025-10-07 3:15 PM'
-    },
-    {
-      id: '3',
-      name: 'Carlos Rivera',
-      email: 'carlos@cangrejeras.com',
-      role: 'Editor',
-      status: 'Activo',
-      lastLogin: '2025-10-06 9:00 AM'
-    }
-  ]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -104,8 +83,42 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
     email: '',
     password: '',
     role: 'Editor' as AdminUser['role'],
-    status: 'Activo' as AdminUser['status']
+    status: 'active' as AdminUser['status']
   });
+
+  // Load users from Firestore
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      console.log('📥 Cargando usuarios desde Firestore...');
+      // Por ahora vamos a usar los datos mockeados de adminService.getAllAdmins()
+      // que retorna datos básicos, luego ampliaremos con datos completos
+      const adminsData = await adminService.getAllAdmins();
+
+      const mappedUsers: AdminUser[] = adminsData.map(admin => ({
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        status: 'active',
+        avatar: admin.avatar,
+        lastLogin: undefined
+      }));
+
+      setUsers(mappedUsers);
+      console.log('✅ Usuarios cargados:', mappedUsers.length);
+    } catch (error) {
+      console.error('❌ Error loading users:', error);
+      toast.error('Error al cargar usuarios');
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleSave = () => {
     toast.success('Configuración guardada exitosamente');
@@ -125,7 +138,7 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
       email: '',
       password: '',
       role: 'Editor',
-      status: 'Activo'
+      status: 'active'
     });
     setShowUserDialog(true);
   };
@@ -148,16 +161,23 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
     setShowDeleteDialog(true);
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (selectedUser) {
-      setUsers(users.filter(u => u.id !== selectedUser.id));
-      toast.success(`Usuario ${selectedUser.name} eliminado`);
-      setShowDeleteDialog(false);
-      setSelectedUser(null);
+      try {
+        console.log('🗑️ Eliminando usuario:', selectedUser.id);
+        await adminService.deleteAdmin(selectedUser.id);
+        await loadUsers(); // Recargar lista
+        toast.success(`Usuario ${selectedUser.name} eliminado`);
+        setShowDeleteDialog(false);
+        setSelectedUser(null);
+      } catch (error) {
+        console.error('❌ Error deleting user:', error);
+        toast.error('Error al eliminar usuario');
+      }
     }
   };
 
-  const saveUser = () => {
+  const saveUser = async () => {
     if (!newUser.name || !newUser.email) {
       toast.error('Por favor completa todos los campos requeridos');
       return;
@@ -168,30 +188,31 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
       return;
     }
 
-    if (isEditMode && selectedUser) {
-      // Edit existing user
-      setUsers(users.map(u => 
-        u.id === selectedUser.id 
-          ? { ...u, name: newUser.name, email: newUser.email, role: newUser.role, status: newUser.status }
-          : u
-      ));
-      toast.success('Usuario actualizado exitosamente');
-    } else {
-      // Add new user
-      const user: AdminUser = {
-        id: Date.now().toString(),
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        status: newUser.status,
-        lastLogin: 'Nunca'
-      };
-      setUsers([...users, user]);
-      toast.success('Usuario agregado exitosamente');
-    }
+    try {
+      if (isEditMode && selectedUser) {
+        // Edit existing user
+        console.log('✏️ Actualizando usuario:', selectedUser.id);
+        await adminService.updateAdmin(selectedUser.id, {
+          name: newUser.name,
+          role: newUser.role,
+          status: newUser.status,
+        });
+        await loadUsers(); // Recargar lista
+        toast.success('Usuario actualizado exitosamente');
+      } else {
+        // Add new user - Por ahora mostrar mensaje que necesita implementarse con Firebase Auth
+        toast.error('La creación de usuarios requiere Firebase Authentication. Por favor implementar con createUserWithEmailAndPassword');
+        // TODO: Implementar creación con Firebase Auth
+        // const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
+        // await adminService.createAdmin(userCredential.user.uid, { name, email, role });
+      }
 
-    setShowUserDialog(false);
-    setSelectedUser(null);
+      setShowUserDialog(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('❌ Error saving user:', error);
+      toast.error('Error al guardar usuario');
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -261,32 +282,42 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
         </div>
 
         {/* Users Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className={`border-b ${darkMode ? 'border-white/10' : 'border-gray-200'}`}>
-                <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Usuario
-                </th>
-                <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Email
-                </th>
-                <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Rol
-                </th>
-                <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Estado
-                </th>
-                <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Último Acceso
-                </th>
-                <th className={`text-right py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
+        {isLoadingUsers ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#0C2340]"></div>
+              <p className={`mt-4 text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                Cargando usuarios...
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className={`border-b ${darkMode ? 'border-white/10' : 'border-gray-200'}`}>
+                  <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Usuario
+                  </th>
+                  <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Email
+                  </th>
+                  <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Rol
+                  </th>
+                  <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Estado
+                  </th>
+                  <th className={`text-left py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Último Acceso
+                  </th>
+                  <th className={`text-right py-3 px-4 ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
                 <tr
                   key={user.id}
                   className={`border-b ${darkMode ? 'border-white/5' : 'border-gray-100'} hover:${darkMode ? 'bg-white/5' : 'bg-gray-50'} transition-colors`}
@@ -313,15 +344,22 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
                   </td>
                   <td className="py-4 px-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      user.status === 'Activo' 
-                        ? 'bg-[#10B981]/10 text-[#10B981]' 
+                      user.status === 'active'
+                        ? 'bg-[#10B981]/10 text-[#10B981]'
                         : 'bg-gray-500/10 text-gray-500'
                     }`}>
-                      {user.status}
+                      {user.status === 'active' ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
                   <td className={`py-4 px-4 text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
-                    {user.lastLogin}
+                    {user.lastLogin ? user.lastLogin.toLocaleString('es-PR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }) : 'Nunca'}
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-end gap-2">
@@ -346,9 +384,10 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -796,10 +835,10 @@ export function SettingsManagement({ darkMode }: SettingsManagementProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className={darkMode ? 'bg-[#1E293B] border-white/10' : ''}>
-                  <SelectItem value="Activo" className={darkMode ? 'text-white' : ''}>
+                  <SelectItem value="active" className={darkMode ? 'text-white' : ''}>
                     Activo
                   </SelectItem>
-                  <SelectItem value="Inactivo" className={darkMode ? 'text-white' : ''}>
+                  <SelectItem value="inactive" className={darkMode ? 'text-white' : ''}>
                     Inactivo
                   </SelectItem>
                 </SelectContent>

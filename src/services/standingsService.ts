@@ -316,10 +316,14 @@ export const standingsService = {
   initializeDefaultStandings: async (): Promise<void> => {
     try {
       const existing = await standingsService.getAllStandings();
+      console.log('📊 Verificando standings existentes:', existing.length, 'equipos');
+
       if (existing.length > 0) {
+        console.log('✅ Ya hay datos en Firestore, no se inicializarán datos por defecto');
         return; // Ya hay datos
       }
 
+      console.log('🆕 No hay datos, inicializando equipos por defecto...');
       const defaultTeams: StandingsTeamInput[] = [
         {
           name: 'Cangrejeras de Santurce',

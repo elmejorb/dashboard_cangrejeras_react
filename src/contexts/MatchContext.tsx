@@ -232,6 +232,20 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Validar que solo un partido pueda estar en vivo a la vez
+    if (status === 'live') {
+      const liveMatch = matches.find(m => m.id !== id && m.status === 'live');
+      if (liveMatch) {
+        const liveHomeTeam = typeof liveMatch.homeTeam === 'string' ? liveMatch.homeTeam : liveMatch.homeTeam;
+        const liveAwayTeam = typeof liveMatch.awayTeam === 'string' ? liveMatch.awayTeam : liveMatch.awayTeam;
+
+        toast.error('Ya hay un partido en vivo', {
+          description: `El partido "${liveHomeTeam} vs ${liveAwayTeam}" está actualmente en vivo. Solo un partido puede estar en vivo a la vez.`
+        });
+        return;
+      }
+    }
+
     try {
       await matchService.updateMatchStatus(id, status, currentUser.id);
       setMatches(matches.map(m =>
