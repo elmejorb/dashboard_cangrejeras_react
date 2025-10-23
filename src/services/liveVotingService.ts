@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -116,6 +117,18 @@ export const liveVotingService = {
       isActive: false,
       closedAt: serverTimestamp(),
     });
+  },
+
+  /**
+   * Elimina una votación en vivo de Firestore
+   */
+  deleteLivePoll: async (pollId: string): Promise<void> => {
+    console.log('🗑️ deleteLivePoll - Eliminando votación:', pollId);
+
+    const pollRef = doc(db, 'live_polls', pollId);
+    await deleteDoc(pollRef);
+
+    console.log('✅ deleteLivePoll - Votación eliminada exitosamente:', pollId);
   },
 
   /**

@@ -141,14 +141,20 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
   const handleOpenDialog = (match?: Match) => {
     if (match) {
       setEditingMatch(match);
+
+      // Extraer fecha y hora del timestamp
+      const matchDate = match.date instanceof Date ? match.date : new Date(match.date);
+      const dateString = matchDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeString = matchDate.toTimeString().substring(0, 5); // HH:MM
+
       setFormData({
         ...match,
         description: match.description || '',
         ticketUrl: match.ticketUrl || '',
         streamUrl: match.streamUrl || '',
         awayTeam: match.awayTeam || '',
-        date: match.date || '',
-        time: match.time || '',
+        date: dateString,
+        time: timeString,
         venue: match.venue || '',
       });
       setVenueInput(match.venue || '');
@@ -315,6 +321,7 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
       let createdMatch: Match;
 
       // First, create or update the match
+      // El servicio matchService se encargará de convertir date+time a timestamp
       if (editingMatch) {
         await updateMatch(editingMatch.id, formData);
         createdMatch = { ...editingMatch, ...formData } as Match;
@@ -476,8 +483,12 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
   ];
 
   const getMatchesForDay = (day: number) => {
-    const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return matches.filter(m => m.date === dateStr);
+    return matches.filter(m => {
+      const matchDate = m.date instanceof Date ? m.date : new Date(m.date);
+      return matchDate.getDate() === day &&
+             matchDate.getMonth() === selectedMonth &&
+             matchDate.getFullYear() === selectedYear;
+    });
   };
 
   const filteredMatches = filterStatus === 'all'
@@ -876,11 +887,11 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
                   <div className="space-y-1 text-xs">
                     <div className={`flex items-center gap-2 ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
                       <CalendarIcon size={12} />
-                      <span>{match.date}</span>
+                      <span>{match.date instanceof Date ? match.date.toLocaleDateString('es-PR') : new Date(match.date).toLocaleDateString('es-PR')}</span>
                     </div>
                     <div className={`flex items-center gap-2 ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
                       <Clock size={12} />
-                      <span>{match.time}</span>
+                      <span>{match.time || (match.date instanceof Date ? match.date.toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : new Date(match.date).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }))}</span>
                     </div>
                     <div className={`flex items-center gap-2 ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
                       <MapPin size={12} />

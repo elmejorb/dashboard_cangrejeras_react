@@ -29,8 +29,8 @@ export interface Match {
   id: string;
   homeTeam: string;
   awayTeam: string;
-  date: string; // ISO date string YYYY-MM-DD
-  time: string; // HH:MM format
+  date: Date; // Timestamp con fecha y hora del partido
+  time?: string; // HH:MM format (solo para UI, se construye desde date)
   venue: string;
   status: 'live' | 'upcoming' | 'completed';
   homeScore: number;
@@ -53,8 +53,8 @@ export interface Match {
 export interface MatchInput {
   homeTeam: string;
   awayTeam: string;
-  date: string;
-  time: string;
+  date?: Date | string; // Timestamp (Date) o string YYYY-MM-DD para construir con time
+  time?: string; // HH:MM format para construir date timestamp
   venue: string;
   status: 'live' | 'upcoming' | 'completed';
   homeScore?: number;
@@ -94,11 +94,21 @@ export const matchService = {
       await teamService.incrementUsageCount(matchData.awayTeam);
       await venueService.incrementUsageCount(matchData.venue);
 
+      // Determinar el timestamp: si date es Date usar directamente, si es string construir con time
+      let matchTimestamp: Date;
+      if (matchData.date instanceof Date) {
+        matchTimestamp = matchData.date;
+      } else if (typeof matchData.date === 'string' && matchData.time) {
+        // Construir timestamp desde date string y time
+        matchTimestamp = new Date(`${matchData.date}T${matchData.time}`);
+      } else {
+        throw new Error('Se requiere date (Date o string con time)');
+      }
+
       const matchDoc = {
         homeTeam: matchData.homeTeam,
         awayTeam: matchData.awayTeam,
-        date: matchData.date,
-        time: matchData.time,
+        date: Timestamp.fromDate(matchTimestamp),
         venue: matchData.venue,
         status: matchData.status,
         homeScore: matchData.homeScore || 0,
@@ -122,10 +132,19 @@ export const matchService = {
 
       return {
         id: docRef.id,
-        ...matchData,
+        homeTeam: matchData.homeTeam,
+        awayTeam: matchData.awayTeam,
+        date: matchTimestamp,
+        time: matchData.time,
+        venue: matchData.venue,
+        status: matchData.status,
         homeScore: matchData.homeScore || 0,
         awayScore: matchData.awayScore || 0,
+        description: matchData.description || '',
+        ticketUrl: matchData.ticketUrl || '',
+        streamUrl: matchData.streamUrl || '',
         isHomeTeam,
+        votingId: matchData.votingId || '',
         statistics: {
           home: { aces: 0, blocks: 0, attacks: 0, digs: 0 },
           away: { aces: 0, blocks: 0, attacks: 0, digs: 0 }
@@ -154,12 +173,28 @@ export const matchService = {
       }
 
       const data = matchSnap.data();
+
+      // Manejo seguro de date que puede ser Timestamp o string (datos antiguos)
+      let matchDate: Date;
+      try {
+        if (data.date?.toDate) {
+          matchDate = data.date.toDate();
+        } else if (typeof data.date === 'string') {
+          matchDate = new Date(data.date);
+        } else {
+          matchDate = new Date();
+        }
+      } catch (error) {
+        console.warn('Error parsing date for match:', matchSnap.id, error);
+        matchDate = new Date();
+      }
+
       return {
         id: matchSnap.id,
         homeTeam: data.homeTeam,
         awayTeam: data.awayTeam,
-        date: data.date,
-        time: data.time,
+        date: matchDate,
+        time: matchDate.toTimeString().substring(0, 5), // Extraer HH:MM del timestamp
         venue: data.venue,
         status: data.status,
         homeScore: data.homeScore || 0,
@@ -204,24 +239,35 @@ export const matchService = {
         // We'll do client-side filtering for team
       }
 
-      // Order by date and time descending (newest first)
-      constraints.push(orderBy('date', 'desc'));
-
-      if (filters?.limit) {
-        constraints.push(limit(filters.limit));
-      }
+      // No aplicar orderBy en Firestore para evitar errores de índice
+      // Haremos el ordenamiento en el cliente
 
       const q = query(collection(db, COLLECTION_NAME), ...constraints);
       const querySnapshot = await getDocs(q);
 
       let matches = querySnapshot.docs.map(doc => {
         const data = doc.data();
+        // Manejo seguro de date que puede ser Timestamp o string (datos antiguos)
+        let matchDate: Date;
+        try {
+          if (data.date?.toDate) {
+            matchDate = data.date.toDate();
+          } else if (typeof data.date === 'string') {
+            matchDate = new Date(data.date);
+          } else {
+            matchDate = new Date();
+          }
+        } catch (error) {
+          console.warn('Error parsing date for match:', doc.id, error);
+          matchDate = new Date();
+        }
+
         return {
           id: doc.id,
           homeTeam: data.homeTeam,
           awayTeam: data.awayTeam,
-          date: data.date,
-          time: data.time,
+          date: matchDate,
+          time: matchDate.toTimeString().substring(0, 5), // Extraer HH:MM del timestamp
           venue: data.venue,
           status: data.status,
           homeScore: data.homeScore || 0,
@@ -242,6 +288,14 @@ export const matchService = {
         };
       });
 
+      // Ordenar por fecha descendente (más recientes primero) en el cliente
+      matches.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      // Aplicar límite si se especificó
+      if (filters?.limit) {
+        matches = matches.slice(0, filters.limit);
+      }
+
       // Client-side filtering for team
       if (filters?.team) {
         matches = matches.filter(m =>
@@ -252,11 +306,13 @@ export const matchService = {
 
       // Client-side filtering for date range
       if (filters?.startDate) {
-        matches = matches.filter(m => m.date >= filters.startDate!);
+        const startDate = new Date(filters.startDate);
+        matches = matches.filter(m => m.date >= startDate);
       }
 
       if (filters?.endDate) {
-        matches = matches.filter(m => m.date <= filters.endDate!);
+        const endDate = new Date(filters.endDate);
+        matches = matches.filter(m => m.date <= endDate);
       }
 
       return matches;
@@ -368,10 +424,21 @@ export const matchService = {
       const cleanData: any = {};
       Object.keys(matchData).forEach(key => {
         const value = (matchData as any)[key];
-        if (value !== undefined) {
+        if (value !== undefined && key !== 'time') { // Excluir time, se maneja con date
           cleanData[key] = value === '' ? '' : value;
         }
       });
+
+      // Convertir date a Firestore Timestamp si existe
+      if (matchData.date) {
+        if (matchData.date instanceof Date) {
+          cleanData.date = Timestamp.fromDate(matchData.date);
+        } else if (typeof matchData.date === 'string' && matchData.time) {
+          // Si date es string y hay time, construir el timestamp
+          const matchTimestamp = new Date(`${matchData.date}T${matchData.time}`);
+          cleanData.date = Timestamp.fromDate(matchTimestamp);
+        }
+      }
 
       const updateData: any = {
         ...cleanData,

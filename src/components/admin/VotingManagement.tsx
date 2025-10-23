@@ -16,6 +16,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { liveVotingService } from "../../services/liveVotingService";
 import { formatDateTimePR } from "../../utils/timeFormat";
 import { BadgePremium } from "./BadgePremium";
+import { toast } from "sonner";
 // import { TimeFormatHelper } from "./TimeFormatHelper"; // Optional: Show 24h format examples
 
 interface VotingManagementProps {
@@ -105,6 +106,24 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
   const handleOpenDialog = (poll?: any) => {
     if (poll) {
       setEditingPoll(poll);
+
+      // Convertir fechas a strings si son objetos Date
+      const scheduledStartDate = poll.scheduledStartDate instanceof Date
+        ? poll.scheduledStartDate.toISOString().split('T')[0]
+        : poll.scheduledStartDate || '';
+
+      const scheduledStartTime = poll.scheduledStartTime instanceof Date
+        ? poll.scheduledStartTime.toTimeString().substring(0, 5)
+        : poll.scheduledStartTime || '';
+
+      const scheduledEndDate = poll.scheduledEndDate instanceof Date
+        ? poll.scheduledEndDate.toISOString().split('T')[0]
+        : poll.scheduledEndDate || '';
+
+      const scheduledEndTime = poll.scheduledEndTime instanceof Date
+        ? poll.scheduledEndTime.toTimeString().substring(0, 5)
+        : poll.scheduledEndTime || '';
+
       setFormData({
         matchId: poll.matchId,
         title: poll.title,
@@ -112,13 +131,16 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
         isActive: poll.isActive,
         autoStartEnabled: poll.autoStartEnabled,
         scheduledStartEnabled: poll.scheduledStartEnabled || false,
-        scheduledStartDate: poll.scheduledStartDate || '',
-        scheduledStartTime: poll.scheduledStartTime || '',
-        scheduledEndDate: poll.scheduledEndDate || '',
-        scheduledEndTime: poll.scheduledEndTime || '',
+        scheduledStartDate,
+        scheduledStartTime,
+        scheduledEndDate,
+        scheduledEndTime,
         options: poll.options,
       });
-      setSelectedPlayers(poll.options.map((o: any) => o.playerId));
+
+      // Filtrar playerIds únicos para evitar duplicados
+      const uniquePlayerIds = Array.from(new Set(poll.options.map((o: any) => o.playerId)));
+      setSelectedPlayers(uniquePlayerIds);
     } else {
       const upcomingMatch = liveMatch || matches.find(m => m.status === 'upcoming');
       setFormData({
@@ -187,9 +209,59 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
     }
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estás seguro de eliminar esta votación?')) {
-      deletePoll(id);
+  const handleDelete = async (id: string | number) => {
+    try {
+      // Si es un ID de Firestore (string), validar que no esté activa
+      if (typeof id === 'string') {
+        const poll = await liveVotingService.getPollById(id);
+
+        if (!poll) {
+          toast.error('Votación no encontrada');
+          return;
+        }
+
+        // Prevenir eliminación de votaciones activas
+        if (poll.isActive) {
+          toast.error('No puedes eliminar una votación activa', {
+            description: 'Primero cierra la votación antes de eliminarla.'
+          });
+          return;
+        }
+
+        // Verificar si tiene votos (opcional: podrías prevenir eliminación si tiene votos)
+        if (poll.totalVotes > 0) {
+          const confirmDelete = confirm(
+            `Esta votación tiene ${poll.totalVotes} voto(s) registrado(s). ¿Estás seguro de eliminarla? Esta acción no se puede deshacer.`
+          );
+          if (!confirmDelete) {
+            return;
+          }
+        } else {
+          if (!confirm('¿Estás seguro de eliminar esta votación?')) {
+            return;
+          }
+        }
+
+        const loadingToast = toast.loading('Eliminando votación...');
+
+        await liveVotingService.deleteLivePoll(id);
+
+        // Recargar la lista de votaciones
+        const polls = await liveVotingService.getAllPolls();
+        setAllFirestorePolls(polls);
+
+        toast.success('✅ Votación eliminada exitosamente', { id: loadingToast });
+      } else {
+        // Si es un ID numérico, usar el contexto (votaciones antiguas)
+        if (confirm('¿Estás seguro de eliminar esta votación?')) {
+          const loadingToast = toast.loading('Eliminando votación...');
+          deletePoll(id);
+          toast.success('✅ Votación eliminada', { id: loadingToast });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error eliminando votación:', error);
+      toast.error('Error al eliminar votación: ' + error.message);
     }
   };
 
@@ -312,9 +384,17 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
 
     try {
       // Use template's default player IDs or all active players
-      const playerIds = template.defaultPlayerIds && template.defaultPlayerIds.length > 0
+      let playerIds = template.defaultPlayerIds && template.defaultPlayerIds.length > 0
         ? template.defaultPlayerIds
         : activePlayers.map(p => p.id);
+
+      // Filtrar duplicados y valores inválidos
+      playerIds = Array.from(new Set(playerIds)).filter(id => id && id !== '0' && id !== 0);
+
+      if (playerIds.length < 2) {
+        toast.error('Se necesitan al menos 2 jugadoras para crear una votación');
+        return;
+      }
 
       await openLiveVoting(
         liveMatch.id,
@@ -341,7 +421,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
           </p>
           <div className="flex gap-2 mt-2">
             <BadgePremium variant="live" size="sm">
-              {polls.filter(p => p.status !== 'archived').length} votación{polls.filter(p => p.status !== 'archived').length !== 1 ? 'es' : ''} activa{polls.filter(p => p.status !== 'archived').length !== 1 ? 's' : ''}
+              {allFirestorePolls.filter(p => p.isActive).length} votación{allFirestorePolls.filter(p => p.isActive).length !== 1 ? 'es' : ''} activa{allFirestorePolls.filter(p => p.isActive).length !== 1 ? 's' : ''}
             </BadgePremium>
             <BadgePremium variant="purple" size="sm">
               {templates.length} plantilla{templates.length !== 1 ? 's' : ''}
@@ -376,7 +456,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
         <TabsList className={`grid w-full max-w-md grid-cols-2 ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
           <TabsTrigger value="active" className="flex items-center gap-2">
             <Circle size={16} />
-            Activas ({polls.filter(p => p.status !== 'archived').length})
+            Activas ({allFirestorePolls.length})
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History size={16} />
@@ -890,11 +970,15 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
                 required
               >
                 <option value="">Seleccionar partido</option>
-                {matches.filter(m => m.status !== 'completed').map(match => (
-                  <option key={match.id} value={match.id}>
-                    {match.homeTeam} vs {match.awayTeam} - {match.date}
-                  </option>
-                ))}
+                {matches.filter(m => m.status !== 'completed').map(match => {
+                  const matchDate = match.date instanceof Date ? match.date : new Date(match.date);
+                  const dateString = matchDate.toLocaleDateString('es-PR');
+                  return (
+                    <option key={match.id} value={match.id}>
+                      {match.homeTeam} vs {match.awayTeam} - {dateString}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1183,7 +1267,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
                         </div>
                         {match && (
                           <p className={`text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
-                            {match.homeTeam} vs {match.awayTeam} • {match.date}
+                            {match.homeTeam} vs {match.awayTeam} • {match.date instanceof Date ? match.date.toLocaleDateString('es-PR') : new Date(match.date).toLocaleDateString('es-PR')}
                           </p>
                         )}
                         {poll.results?.closedAt && (
@@ -1525,3 +1609,4 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
     </div>
   );
 }
+

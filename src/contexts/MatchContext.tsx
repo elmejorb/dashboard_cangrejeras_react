@@ -3,6 +3,7 @@ import { toast } from 'sonner@2.0.3';
 import { matchService } from '../services/matchService';
 import { teamService } from '../services/teamService';
 import { venueService } from '../services/venueService';
+import { liveVotingService } from '../services/liveVotingService';
 import { useAuth } from './AuthContext';
 
 export interface MatchStats {
@@ -21,8 +22,8 @@ export interface Match {
   id: string;
   homeTeam: string;
   awayTeam: string;
-  date: string;
-  time: string;
+  date: Date; // Timestamp con fecha y hora del partido
+  time?: string; // HH:MM format (solo para UI, se construye desde date)
   venue: string;
   status: 'live' | 'upcoming' | 'completed';
   homeScore: number;
@@ -251,6 +252,23 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       setMatches(matches.map(m =>
         m.id === id ? { ...m, status } : m
       ));
+
+      // Si el partido termina (completed), cerrar automáticamente las votaciones activas de ese partido
+      if (status === 'completed') {
+        try {
+          const matchIdNumber = parseInt(id);
+          const activePoll = await liveVotingService.getActivePollByMatch(matchIdNumber);
+
+          if (activePoll) {
+            await liveVotingService.closeLivePoll(activePoll.id);
+            console.log(`✅ Votación cerrada automáticamente al finalizar partido: ${activePoll.id}`);
+            toast.info('La votación del partido se cerró automáticamente');
+          }
+        } catch (votingError) {
+          console.error('Error cerrando votación al finalizar partido:', votingError);
+          // No lanzar error, solo registrar - el partido se actualizó correctamente
+        }
+      }
 
       const statusLabels = {
         live: 'En Vivo',

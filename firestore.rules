@@ -131,6 +131,118 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ===== EQUIPOS =====
+    match /teams/{teamId} {
+      // Todos pueden leer (para autocompletar en formularios)
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar equipos
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== ESTADIOS/VENUES =====
+    match /venues/{venueId} {
+      // Todos pueden leer (para autocompletar en formularios)
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar venues
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== PLANTILLAS DE VOTACIÓN =====
+    match /voting_templates/{templateId} {
+      // Admins autenticados pueden leer plantillas
+      allow read: if isAuthenticated();
+
+      // Solo admins pueden crear/modificar/eliminar plantillas
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== POLLS (Votaciones Activas) =====
+    match /polls/{pollId} {
+      // Todos pueden leer polls (incluso fans en la app)
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar
+      allow create, update, delete: if isAdmin();
+
+      // SUB-COLECCIÓN: VOTOS EN POLLS
+      match /votes/{voteId} {
+        // Usuarios autenticados pueden leer votos
+        allow read: if isAuthenticated();
+
+        // Usuarios autenticados pueden votar
+        allow create: if isAuthenticated() &&
+                        voteId == request.auth.uid &&
+                        request.resource.data.userId == request.auth.uid;
+
+        // No se pueden modificar ni eliminar votos
+        allow update, delete: if false;
+
+        // Admins pueden ver todos los votos
+        allow read: if isAdmin();
+      }
+    }
+
+    // ===== LIVE POLLS (Votaciones en Vivo) =====
+    match /live_polls/{pollId} {
+      // Todos pueden leer votaciones en vivo (incluso fans en la app)
+      allow read: if true;
+
+      // Solo admins pueden crear/eliminar
+      allow create, delete: if isAdmin();
+
+      // Admins pueden actualizar cualquier campo
+      allow update: if isAdmin();
+
+      // Usuarios autenticados pueden actualizar SOLO los contadores de votos
+      // cuando están votando: options (con votes/percentage) y totalVotes
+      // NO pueden modificar: title, description, isActive, matchId, etc.
+      allow update: if isAuthenticated() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options', 'totalVotes']) &&
+                      request.resource.data.title == resource.data.title &&
+                      request.resource.data.isActive == resource.data.isActive &&
+                      request.resource.data.matchId == resource.data.matchId;
+
+      // SUB-COLECCIÓN: VOTOS EN LIVE POLLS (no se usa actualmente)
+      match /votes/{voteId} {
+        // Usuarios autenticados pueden leer votos
+        allow read: if isAuthenticated();
+
+        // Usuarios autenticados pueden votar
+        allow create: if isAuthenticated() &&
+                        voteId == request.auth.uid &&
+                        request.resource.data.userId == request.auth.uid;
+
+        // No se pueden modificar ni eliminar votos
+        allow update, delete: if false;
+
+        // Admins pueden ver todos los votos
+        allow read: if isAdmin();
+      }
+    }
+
+    // ===== TABLA DE POSICIONES =====
+    match /standings/{standingId} {
+      // Todos pueden leer la tabla de posiciones
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== REGISTRO DE ACTIVIDAD =====
+    match /activityLog/{logId} {
+      // Solo admins pueden leer el log de actividad
+      allow read: if isAdmin();
+
+      // Cualquier usuario autenticado puede escribir en el log (se valida en el código)
+      allow create: if isAuthenticated();
+
+      // No se puede modificar ni eliminar el historial
+      allow update, delete: if false;
+    }
+
     // ===== ESTADÍSTICAS =====
     match /stats/{document=**} {
       // Todos pueden leer estadísticas
@@ -138,6 +250,25 @@ service cloud.firestore {
 
       // Solo admins pueden actualizar
       allow write: if isAdmin();
+    }
+
+    // ===== VOTOS (Colección principal para live_polls) =====
+    match /votes/{voteId} {
+      // Usuarios autenticados pueden leer sus propios votos
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Admins pueden leer todos los votos
+      allow read: if isAdmin();
+
+      // Usuarios autenticados pueden crear votos
+      // Validaciones:
+      // - Solo pueden votar una vez por partido (validado en código)
+      // - El voto debe tener su userId
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+
+      // No se pueden modificar ni eliminar votos una vez emitidos
+      allow update, delete: if false;
     }
 
     // ===== DENEGAR TODO LO DEMÁS =====
