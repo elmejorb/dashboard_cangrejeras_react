@@ -20,7 +20,7 @@ import { db } from '../config/firebase';
 
 export interface LivePoll {
   id: string;
-  matchId: number;
+  matchId: number | string; // Puede ser number (legacy) o string (Firestore ID)
   title: string;
   description: string;
   isActive: boolean;
@@ -32,24 +32,24 @@ export interface LivePoll {
 }
 
 export interface PollOption {
-  playerId: number;
+  playerId: string; // ✅ CAMBIO: Ahora usa document ID (string) en vez de número de camiseta
   votes: number;
 }
 
 export interface Vote {
   id: string;
   pollId: string;
-  matchId: number;
+  matchId: number | string; // Puede ser number (legacy) o string (Firestore ID)
   userId: string; // Firebase Auth UID
-  playerId: number;
+  playerId: string; // ✅ CAMBIO: Ahora usa document ID (string) en vez de número de camiseta
   createdAt: Date;
 }
 
 interface LivePollInput {
-  matchId: number;
+  matchId: number | string; // Puede ser number (legacy) o string (Firestore ID)
   title: string;
   description: string;
-  playerIds: number[];
+  playerIds: string[]; // ✅ CAMBIO: Ahora usa document IDs (string[]) en vez de números
   createdBy: string;
 }
 
@@ -129,6 +129,63 @@ export const liveVotingService = {
     await deleteDoc(pollRef);
 
     console.log('✅ deleteLivePoll - Votación eliminada exitosamente:', pollId);
+  },
+
+  /**
+   * Elimina todos los votos asociados a una votación específica
+   */
+  deleteVotesByPollId: async (pollId: string): Promise<number> => {
+    console.log('🗑️ deleteVotesByPollId - Eliminando votos de votación:', pollId);
+
+    const q = query(
+      collection(db, 'votes'),
+      where('pollId', '==', pollId)
+    );
+
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+
+    await Promise.all(deletePromises);
+
+    console.log(`✅ deleteVotesByPollId - ${snapshot.size} votos eliminados de votación ${pollId}`);
+    return snapshot.size;
+  },
+
+  /**
+   * Elimina todos los votos asociados a un partido específico
+   */
+  deleteVotesByMatchId: async (matchId: number | string): Promise<number> => {
+    console.log('🗑️ deleteVotesByMatchId - Eliminando votos de partido:', matchId);
+
+    const q = query(
+      collection(db, 'votes'),
+      where('matchId', '==', matchId)
+    );
+
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+
+    await Promise.all(deletePromises);
+
+    console.log(`✅ deleteVotesByMatchId - ${snapshot.size} votos eliminados de partido ${matchId}`);
+    return snapshot.size;
+  },
+
+  /**
+   * Elimina una votación y todos sus votos asociados (eliminación en cascada)
+   */
+  deleteLivePollWithVotes: async (pollId: string): Promise<void> => {
+    console.log('🗑️ deleteLivePollWithVotes - Eliminando votación con votos:', pollId);
+
+    // 1. Eliminar todos los votos primero
+    const votesDeleted = await liveVotingService.deleteVotesByPollId(pollId);
+    console.log(`✅ Eliminados ${votesDeleted} votos`);
+
+    // 2. Eliminar la votación
+    await liveVotingService.deleteLivePoll(pollId);
+    console.log('✅ Votación eliminada');
+
+    console.log(`✅ deleteLivePollWithVotes - Eliminación completa: votación ${pollId} y ${votesDeleted} votos`);
   },
 
   /**
@@ -233,7 +290,7 @@ export const liveVotingService = {
     pollId: string,
     matchId: number,
     userId: string,
-    playerId: number
+    playerId: string // ✅ CAMBIO: Ahora recibe document ID (string)
   ): Promise<void> => {
     // 1. Verificar que el usuario no haya votado antes
     const hasVoted = await liveVotingService.hasUserVotedInMatch(userId, matchId);
@@ -489,9 +546,9 @@ export const liveVotingService = {
 
   /**
    * Obtiene los IDs de las jugadoras asignadas a una votación
-   * @returns Array de IDs numéricos de jugadoras [1, 2, 3, 5, 8, ...]
+   * @returns Array de document IDs de jugadoras ["abc123", "def456", ...]
    */
-  getPlayerIdsFromPoll: async (pollId: string): Promise<number[]> => {
+  getPlayerIdsFromPoll: async (pollId: string): Promise<string[]> => {
     try {
       const poll = await liveVotingService.getPollById(pollId);
       if (!poll) {
@@ -511,7 +568,7 @@ export const liveVotingService = {
   /**
    * Verifica si una jugadora específica está en una votación
    */
-  isPlayerInPoll: async (pollId: string, playerId: number): Promise<boolean> => {
+  isPlayerInPoll: async (pollId: string, playerId: string): Promise<boolean> => {
     const playerIds = await liveVotingService.getPlayerIdsFromPoll(pollId);
     return playerIds.includes(playerId);
   },

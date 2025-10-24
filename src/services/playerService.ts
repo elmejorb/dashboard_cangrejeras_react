@@ -200,6 +200,7 @@ export const playerService = {
       }
 
       // Order by number for roster display
+      // Requiere índice compuesto: Collection: players, Fields: status (Ascending), number (Ascending)
       constraints.push(orderBy('number', 'asc'));
 
       if (filters?.limit) {

@@ -1,11 +1,12 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  Trophy, 
-  BarChart3, 
-  Newspaper, 
-  ImageIcon, 
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  Trophy,
+  BarChart3,
+  Newspaper,
+  ImageIcon,
+  Megaphone,
   Settings,
   Moon,
   Sun,
@@ -38,6 +39,7 @@ export function AdminSidebar({
     { id: 'voting', icon: BarChart3, label: 'Votaciones en Vivo', color: '#E01E37' },
     { id: 'news', icon: Newspaper, label: 'Noticias', color: '#F97316' },
     { id: 'media', icon: ImageIcon, label: 'Contenido Multimedia', color: '#8B5CF6' },
+    { id: 'banners', icon: Megaphone, label: 'Banners de Promoción', color: '#EC4899' },
     { id: 'settings', icon: Settings, label: 'Configuración', color: '#475569' },
   ];
 

@@ -13,6 +13,7 @@ const NewsManagement = lazy(() => import("./components/admin/NewsManagement").th
 const MatchManagement = lazy(() => import("./components/admin/MatchManagement").then(m => ({ default: m.MatchManagement })));
 const StandingsManagement = lazy(() => import("./components/admin/StandingsManagement").then(m => ({ default: m.StandingsManagement })));
 const MediaManagement = lazy(() => import("./components/admin/MediaManagement").then(m => ({ default: m.MediaManagement })));
+const BannerManagement = lazy(() => import("./components/admin/BannerManagement").then(m => ({ default: m.BannerManagement })));
 const SettingsManagement = lazy(() => import("./components/admin/SettingsManagement").then(m => ({ default: m.SettingsManagement })));
 const UserProfile = lazy(() => import("./components/admin/UserProfile").then(m => ({ default: m.UserProfile })));
 
@@ -53,6 +54,7 @@ export default function AdminApp({ currentUser, onLogout }: AdminAppProps) {
         {activeSection === 'news' && <NewsManagement darkMode={darkMode} />}
         {activeSection === 'standings' && <StandingsManagement darkMode={darkMode} />}
         {activeSection === 'media' && <MediaManagement darkMode={darkMode} />}
+        {activeSection === 'banners' && <BannerManagement darkMode={darkMode} />}
         {activeSection === 'settings' && <SettingsManagement darkMode={darkMode} />}
         {activeSection === 'profile' && <UserProfile darkMode={darkMode} currentUser={user} onUserUpdate={handleUserUpdate} />}
       </Suspense>

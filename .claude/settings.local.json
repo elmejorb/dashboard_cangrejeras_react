@@ -6,7 +6,9 @@
       "Bash(npm run dev)",
       "Bash(npx tsc:*)",
       "Bash(firebase deploy:*)",
-      "Bash(npx firebase-tools deploy --only firestore:rules)"
+      "Bash(npx firebase-tools deploy --only firestore:rules)",
+      "Bash(npm run build:*)",
+      "Bash(npm run build:dev:*)"
     ],
     "deny": [],
     "ask": []

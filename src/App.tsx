@@ -16,6 +16,9 @@ import { MatchProvider } from "./contexts/MatchContext";
 import { VotingProvider } from "./contexts/VotingContext";
 import { PlayerProvider } from "./contexts/PlayerContext";
 
+// Importar herramientas de diagnóstico (disponibles en consola del navegador)
+import "./utils/fixPlayerNumbers";
+
 function AppContent() {
   const [darkMode, setDarkMode] = useState(false);
   const [showPreview, setShowPreview] = useState(false);

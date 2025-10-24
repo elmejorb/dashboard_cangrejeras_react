@@ -72,10 +72,11 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
     options: [] as any[],
   });
 
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
-  
+  // ✅ CAMBIO: Ahora usa document IDs (string) en vez de números de camiseta
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+
   // Template dialog - separate player selection state
-  const [selectedTemplatePlayers, setSelectedTemplatePlayers] = useState<number[]>([]);
+  const [selectedTemplatePlayers, setSelectedTemplatePlayers] = useState<string[]>([]);
 
   // Template form data
   const [templateFormData, setTemplateFormData] = useState({
@@ -228,29 +229,28 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
           return;
         }
 
-        // Verificar si tiene votos (opcional: podrías prevenir eliminación si tiene votos)
-        if (poll.totalVotes > 0) {
-          const confirmDelete = confirm(
-            `Esta votación tiene ${poll.totalVotes} voto(s) registrado(s). ¿Estás seguro de eliminarla? Esta acción no se puede deshacer.`
-          );
-          if (!confirmDelete) {
-            return;
-          }
-        } else {
-          if (!confirm('¿Estás seguro de eliminar esta votación?')) {
-            return;
-          }
+        // Verificar si tiene votos y mostrar advertencia
+        const message = poll.totalVotes > 0
+          ? `Esta votación tiene ${poll.totalVotes} voto(s) registrado(s). Se eliminarán todos los votos junto con la votación. ¿Estás seguro? Esta acción no se puede deshacer.`
+          : '¿Estás seguro de eliminar esta votación? Esta acción no se puede deshacer.';
+
+        if (!confirm(message)) {
+          return;
         }
 
-        const loadingToast = toast.loading('Eliminando votación...');
+        const loadingToast = toast.loading('Eliminando votación y votos...');
 
-        await liveVotingService.deleteLivePoll(id);
+        // Usar eliminación en cascada (elimina votación y sus votos)
+        await liveVotingService.deleteLivePollWithVotes(id);
 
         // Recargar la lista de votaciones
         const polls = await liveVotingService.getAllPolls();
         setAllFirestorePolls(polls);
 
-        toast.success('✅ Votación eliminada exitosamente', { id: loadingToast });
+        const successMessage = poll.totalVotes > 0
+          ? `✅ Votación y ${poll.totalVotes} voto(s) eliminados exitosamente`
+          : '✅ Votación eliminada exitosamente';
+        toast.success(successMessage, { id: loadingToast });
       } else {
         // Si es un ID numérico, usar el contexto (votaciones antiguas)
         if (confirm('¿Estás seguro de eliminar esta votación?')) {
@@ -271,7 +271,8 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
     }
   };
 
-  const togglePlayerSelection = (playerId: number) => {
+  // ✅ CAMBIO: Ahora usa document ID (string) en vez de número de camiseta
+  const togglePlayerSelection = (playerId: string) => {
     if (selectedPlayers.includes(playerId)) {
       setSelectedPlayers(selectedPlayers.filter(id => id !== playerId));
     } else {
@@ -280,7 +281,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
   };
 
   const selectAllPlayers = () => {
-    setSelectedPlayers(activePlayers.map(p => p.id));
+    setSelectedPlayers(activePlayers.map(p => p.id)); // ✅ Cambio: player.id
   };
 
   const deselectAllPlayers = () => {
@@ -288,7 +289,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
   };
 
   // Template player selection handlers
-  const toggleTemplatePlayerSelection = (playerId: number) => {
+  const toggleTemplatePlayerSelection = (playerId: string) => {
     if (selectedTemplatePlayers.includes(playerId)) {
       setSelectedTemplatePlayers(selectedTemplatePlayers.filter(id => id !== playerId));
     } else {
@@ -297,7 +298,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
   };
 
   const selectAllTemplatePlayers = () => {
-    setSelectedTemplatePlayers(activePlayers.map(p => p.id));
+    setSelectedTemplatePlayers(activePlayers.map(p => p.id)); // ✅ Cambio: player.id
   };
 
   const deselectAllTemplatePlayers = () => {
@@ -383,13 +384,13 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
     }
 
     try {
-      // Use template's default player IDs or all active players
+      // ✅ CAMBIO: Ahora usa document IDs (string) en vez de números
       let playerIds = template.defaultPlayerIds && template.defaultPlayerIds.length > 0
         ? template.defaultPlayerIds
         : activePlayers.map(p => p.id);
 
-      // Filtrar duplicados y valores inválidos
-      playerIds = Array.from(new Set(playerIds)).filter(id => id && id !== '0' && id !== 0);
+      // Filtrar duplicados y valores inválidos (ahora son strings)
+      playerIds = Array.from(new Set(playerIds)).filter(id => id && typeof id === 'string' && id.length > 0);
 
       if (playerIds.length < 2) {
         toast.error('Se necesitan al menos 2 jugadoras para crear una votación');
@@ -1188,7 +1189,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
                         {player.name}
                       </div>
                       <div className={`text-xs ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
-                        #{player.jerseyNumber} • {player.position}
+                        #{player.number} • {player.position}
                       </div>
                     </div>
                   </label>
@@ -1565,7 +1566,7 @@ export function VotingManagement({ darkMode }: VotingManagementProps) {
                         {player.name}
                       </div>
                       <div className={`text-xs ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
-                        #{player.jerseyNumber} • {player.position}
+                        #{player.number} • {player.position}
                       </div>
                     </div>
                   </label>

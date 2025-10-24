@@ -17,6 +17,8 @@ import {
 import { db } from '../config/firebase';
 import { teamService } from './teamService';
 import { venueService } from './venueService';
+import { liveVotingService } from './liveVotingService';
+import { playerService } from './playerService';
 
 export interface MatchStats {
   aces: number;
@@ -129,9 +131,56 @@ export const matchService = {
       };
 
       const docRef = await addDoc(collection(db, COLLECTION_NAME), matchDoc);
+      const matchId = docRef.id;
+
+      // Crear votación automáticamente para el partido
+      let votingId = matchData.votingId || '';
+      try {
+        // Obtener todas las jugadoras activas
+        const activePlayers = await playerService.getActivePlayers();
+        console.log('📊 Jugadoras activas encontradas:', activePlayers.length);
+        console.log('📊 Detalle de jugadoras:', activePlayers.map(p => ({
+          id: p.id,
+          name: p.name,
+          number: p.number
+        })));
+
+        if (activePlayers.length >= 2) {
+          // ✅ CAMBIO: Ahora usamos player.id (document ID) en vez de player.number
+          // Esto elimina la dependencia del campo "number" y hace el sistema más robusto
+          const playerIds = activePlayers.map(p => p.id);
+
+          console.log('✅ Creando votación con', activePlayers.length, 'jugadoras');
+          console.log('✅ Document IDs de jugadoras:', playerIds);
+
+          const newPoll = await liveVotingService.createLivePoll({
+            matchId: matchId, // Usar el ID string del documento
+            title: 'MVP del Partido',
+            description: 'Vota por la jugadora más destacada del partido',
+            playerIds: playerIds, // ✅ Ahora son document IDs (strings)
+            createdBy: adminId
+          }, false); // Iniciar inactiva
+
+          votingId = newPoll.id;
+
+          // Actualizar el partido con el votingId
+          await updateDoc(doc(db, COLLECTION_NAME, matchId), {
+            votingId: votingId
+          });
+
+          console.log(`✅ Votación creada automáticamente para partido ${matchId}: ${votingId}`);
+          console.log(`✅ Votación incluye ${playerIds.length} jugadoras activas`);
+        } else {
+          console.warn('⚠️ No hay suficientes jugadoras activas para crear votación');
+        }
+      } catch (votingError) {
+        console.error('❌ Error creando votación automática:', votingError);
+        console.error('❌ Stack:', votingError);
+        // No lanzar error - el partido se creó exitosamente
+      }
 
       return {
-        id: docRef.id,
+        id: matchId,
         homeTeam: matchData.homeTeam,
         awayTeam: matchData.awayTeam,
         date: matchTimestamp,
@@ -144,7 +193,7 @@ export const matchService = {
         ticketUrl: matchData.ticketUrl || '',
         streamUrl: matchData.streamUrl || '',
         isHomeTeam,
-        votingId: matchData.votingId || '',
+        votingId: votingId,
         statistics: {
           home: { aces: 0, blocks: 0, attacks: 0, digs: 0 },
           away: { aces: 0, blocks: 0, attacks: 0, digs: 0 }
@@ -528,21 +577,46 @@ export const matchService = {
 
   /**
    * Delete a match
+   * Elimina en cascada: partido -> votación relacionada -> votos de la votación
    */
   deleteMatch: async (matchId: string): Promise<void> => {
     try {
-      // Obtener el partido antes de eliminarlo para decrementar contadores
+      console.log('🗑️ Iniciando eliminación de partido:', matchId);
+
+      // Obtener el partido antes de eliminarlo
       const match = await matchService.getMatch(matchId);
-      if (match) {
-        await teamService.decrementUsageCount(match.homeTeam);
-        await teamService.decrementUsageCount(match.awayTeam);
-        await venueService.decrementUsageCount(match.venue);
+      if (!match) {
+        throw new Error('Partido no encontrado');
       }
 
+      // 1. Eliminar votación relacionada y sus votos (si existe)
+      if (match.votingId) {
+        console.log(`🗑️ Eliminando votación relacionada: ${match.votingId}`);
+        try {
+          await liveVotingService.deleteLivePollWithVotes(match.votingId);
+          console.log('✅ Votación y votos eliminados exitosamente');
+        } catch (votingError) {
+          console.error('⚠️ Error eliminando votación:', votingError);
+          // Continuar con la eliminación del partido
+        }
+      } else {
+        console.log('ℹ️ No hay votación relacionada para eliminar');
+      }
+
+      // 2. Decrementar contadores de uso de equipos y estadio
+      await teamService.decrementUsageCount(match.homeTeam);
+      await teamService.decrementUsageCount(match.awayTeam);
+      await venueService.decrementUsageCount(match.venue);
+      console.log('✅ Contadores de uso decrementados');
+
+      // 3. Eliminar el partido
       const matchRef = doc(db, COLLECTION_NAME, matchId);
       await deleteDoc(matchRef);
+      console.log('✅ Partido eliminado exitosamente');
+
+      console.log(`✅ Eliminación completa de partido ${matchId}`);
     } catch (error) {
-      console.error('Error deleting match:', error);
+      console.error('❌ Error deleting match:', error);
       throw new Error('Error al eliminar partido');
     }
   },
