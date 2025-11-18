@@ -11,6 +11,7 @@ import { BadgePremium } from "./BadgePremium";
 import { DatabaseMigration } from "./DatabaseMigration";
 import { playerService } from "../../services/playerService";
 import { storageService } from "../../services/storageService";
+import { positionService } from "../../services/positionService";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   Dialog,
@@ -110,13 +111,7 @@ export function PlayerManagement({ darkMode }: PlayerManagementProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   // Positions Management State
-  const [positions, setPositions] = useState<string[]>([
-    'Opuesta',
-    'Esquina',
-    'Central',
-    'Líbero',
-    'Levantadora',
-  ]);
+  const [positions, setPositions] = useState<string[]>([]);
   const [showPositionDialog, setShowPositionDialog] = useState(false);
   const [showDeletePositionDialog, setShowDeletePositionDialog] = useState(false);
   const [isEditPositionMode, setIsEditPositionMode] = useState(false);
@@ -124,9 +119,10 @@ export function PlayerManagement({ darkMode }: PlayerManagementProps) {
   const [selectedPositionIndex, setSelectedPositionIndex] = useState<number>(-1);
   const [newPositionName, setNewPositionName] = useState('');
 
-  // Load players from Firestore on mount
+  // Load players and positions from Firestore on mount
   useEffect(() => {
     loadPlayers();
+    loadPositions();
   }, []);
 
   const loadPlayers = async () => {
@@ -139,6 +135,16 @@ export function PlayerManagement({ darkMode }: PlayerManagementProps) {
       toast.error('Error al cargar jugadoras');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadPositions = async () => {
+    try {
+      const data = await positionService.getPositions();
+      setPositions(data);
+    } catch (error) {
+      console.error('Error loading positions:', error);
+      toast.error('Error al cargar posiciones');
     }
   };
 
@@ -308,44 +314,52 @@ export function PlayerManagement({ darkMode }: PlayerManagementProps) {
     setShowDeletePositionDialog(true);
   }, []);
 
-  const confirmDeletePosition = useCallback(() => {
-    if (selectedPositionIndex !== -1) {
-      const newPositions = positions.filter((_, i) => i !== selectedPositionIndex);
-      setPositions(newPositions);
-      toast.success(`Posición "${selectedPosition}" eliminada`);
-      setShowDeletePositionDialog(false);
-      setSelectedPosition(null);
-      setSelectedPositionIndex(-1);
+  const confirmDeletePosition = useCallback(async () => {
+    if (selectedPositionIndex !== -1 && selectedPosition) {
+      try {
+        await positionService.deletePosition(selectedPosition, currentUser?.id);
+        const newPositions = positions.filter((_, i) => i !== selectedPositionIndex);
+        setPositions(newPositions);
+        toast.success(`Posición "${selectedPosition}" eliminada`);
+      } catch (error: any) {
+        toast.error(error.message || 'Error al eliminar posición');
+      } finally {
+        setShowDeletePositionDialog(false);
+        setSelectedPosition(null);
+        setSelectedPositionIndex(-1);
+      }
     }
-  }, [selectedPositionIndex, positions, selectedPosition]);
+  }, [selectedPositionIndex, positions, selectedPosition, currentUser]);
 
-  const savePosition = useCallback(() => {
+  const savePosition = useCallback(async () => {
     if (!newPositionName.trim()) {
       toast.error('El nombre de la posición no puede estar vacío');
       return;
     }
 
-    if (isEditPositionMode && selectedPositionIndex !== -1) {
-      // Edit existing position
-      const newPositions = [...positions];
-      newPositions[selectedPositionIndex] = newPositionName.trim();
-      setPositions(newPositions);
-      toast.success('Posición actualizada exitosamente');
-    } else {
-      // Add new position
-      if (positions.includes(newPositionName.trim())) {
-        toast.error('Esta posición ya existe');
-        return;
+    try {
+      if (isEditPositionMode && selectedPositionIndex !== -1 && selectedPosition) {
+        // Edit existing position
+        await positionService.updatePosition(selectedPosition, newPositionName.trim(), currentUser?.id);
+        const newPositions = [...positions];
+        newPositions[selectedPositionIndex] = newPositionName.trim();
+        setPositions(newPositions);
+        toast.success('Posición actualizada exitosamente');
+      } else {
+        // Add new position
+        await positionService.addPosition(newPositionName.trim(), currentUser?.id);
+        setPositions([...positions, newPositionName.trim()]);
+        toast.success('Posición agregada exitosamente');
       }
-      setPositions([...positions, newPositionName.trim()]);
-      toast.success('Posición agregada exitosamente');
-    }
 
-    setShowPositionDialog(false);
-    setSelectedPosition(null);
-    setSelectedPositionIndex(-1);
-    setNewPositionName('');
-  }, [newPositionName, isEditPositionMode, selectedPositionIndex, positions]);
+      setShowPositionDialog(false);
+      setSelectedPosition(null);
+      setSelectedPositionIndex(-1);
+      setNewPositionName('');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar posición');
+    }
+  }, [newPositionName, isEditPositionMode, selectedPositionIndex, selectedPosition, positions, currentUser]);
 
   const filteredPlayers = useMemo(() => 
     players.filter(player =>

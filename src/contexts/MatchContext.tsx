@@ -11,6 +11,11 @@ export interface MatchStats {
   blocks: number;
   attacks: number;
   digs: number;
+  set1: number;
+  set2: number;
+  set3: number;
+  set4: number;
+  set5: number;
 }
 
 export interface TeamStats {

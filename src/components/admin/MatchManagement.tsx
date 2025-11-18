@@ -101,8 +101,8 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
 
   // Stats form state
   const [statsFormData, setStatsFormData] = useState<{home: MatchStats, away: MatchStats}>({
-    home: { aces: 0, blocks: 0, attacks: 0, digs: 0 },
-    away: { aces: 0, blocks: 0, attacks: 0, digs: 0 }
+    home: { aces: 0, blocks: 0, attacks: 0, digs: 0, set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 },
+    away: { aces: 0, blocks: 0, attacks: 0, digs: 0, set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 }
   });
 
   const resetForm = () => {
@@ -178,11 +178,35 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
   const handleOpenStatsDialog = (match: Match) => {
     setStatsMatch(match);
     if (match.statistics) {
-      setStatsFormData(match.statistics);
+      // Asegurar que todos los campos existan, incluyendo los sets (para partidos antiguos)
+      setStatsFormData({
+        home: {
+          aces: match.statistics.home.aces || 0,
+          blocks: match.statistics.home.blocks || 0,
+          attacks: match.statistics.home.attacks || 0,
+          digs: match.statistics.home.digs || 0,
+          set1: match.statistics.home.set1 || 0,
+          set2: match.statistics.home.set2 || 0,
+          set3: match.statistics.home.set3 || 0,
+          set4: match.statistics.home.set4 || 0,
+          set5: match.statistics.home.set5 || 0
+        },
+        away: {
+          aces: match.statistics.away.aces || 0,
+          blocks: match.statistics.away.blocks || 0,
+          attacks: match.statistics.away.attacks || 0,
+          digs: match.statistics.away.digs || 0,
+          set1: match.statistics.away.set1 || 0,
+          set2: match.statistics.away.set2 || 0,
+          set3: match.statistics.away.set3 || 0,
+          set4: match.statistics.away.set4 || 0,
+          set5: match.statistics.away.set5 || 0
+        }
+      });
     } else {
       setStatsFormData({
-        home: { aces: 0, blocks: 0, attacks: 0, digs: 0 },
-        away: { aces: 0, blocks: 0, attacks: 0, digs: 0 }
+        home: { aces: 0, blocks: 0, attacks: 0, digs: 0, set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 },
+        away: { aces: 0, blocks: 0, attacks: 0, digs: 0, set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 }
       });
     }
     setIsStatsDialogOpen(true);
@@ -411,10 +435,66 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
 
     if (statsMatch) {
       try {
-        await updateMatchStats(statsMatch.id, statsFormData);
+        // Asegurar que todos los campos existan (crear los que falten)
+        const completeStats = {
+          home: {
+            aces: statsFormData.home.aces || 0,
+            blocks: statsFormData.home.blocks || 0,
+            attacks: statsFormData.home.attacks || 0,
+            digs: statsFormData.home.digs || 0,
+            set1: statsFormData.home.set1 || 0,
+            set2: statsFormData.home.set2 || 0,
+            set3: statsFormData.home.set3 || 0,
+            set4: statsFormData.home.set4 || 0,
+            set5: statsFormData.home.set5 || 0
+          },
+          away: {
+            aces: statsFormData.away.aces || 0,
+            blocks: statsFormData.away.blocks || 0,
+            attacks: statsFormData.away.attacks || 0,
+            digs: statsFormData.away.digs || 0,
+            set1: statsFormData.away.set1 || 0,
+            set2: statsFormData.away.set2 || 0,
+            set3: statsFormData.away.set3 || 0,
+            set4: statsFormData.away.set4 || 0,
+            set5: statsFormData.away.set5 || 0
+          }
+        };
+
+        // Calcular sets ganados por cada equipo
+        let homeSetsWon = 0;
+        let awaySetsWon = 0;
+
+        // Comparar cada set
+        if (completeStats.home.set1 > completeStats.away.set1) homeSetsWon++;
+        else if (completeStats.away.set1 > completeStats.home.set1) awaySetsWon++;
+
+        if (completeStats.home.set2 > completeStats.away.set2) homeSetsWon++;
+        else if (completeStats.away.set2 > completeStats.home.set2) awaySetsWon++;
+
+        if (completeStats.home.set3 > completeStats.away.set3) homeSetsWon++;
+        else if (completeStats.away.set3 > completeStats.home.set3) awaySetsWon++;
+
+        if (completeStats.home.set4 > completeStats.away.set4) homeSetsWon++;
+        else if (completeStats.away.set4 > completeStats.home.set4) awaySetsWon++;
+
+        if (completeStats.home.set5 > completeStats.away.set5) homeSetsWon++;
+        else if (completeStats.away.set5 > completeStats.home.set5) awaySetsWon++;
+
+        // Actualizar estadísticas completas (esto creará los campos que falten en Firestore)
+        await updateMatchStats(statsMatch.id, completeStats);
+
+        // Actualizar los scores del partido basados en sets ganados
+        await updateMatch(statsMatch.id, {
+          homeScore: homeSetsWon,
+          awayScore: awaySetsWon
+        });
+
+        toast.success('Estadísticas actualizadas correctamente');
         handleCloseStatsDialog();
       } catch (error) {
         console.error('Error updating stats:', error);
+        toast.error('Error al actualizar estadísticas');
       }
     }
   };
@@ -1618,7 +1698,7 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
 
       {/* Statistics Dialog */}
       <Dialog open={isStatsDialogOpen} onOpenChange={handleCloseStatsDialog}>
-        <DialogContent className={`max-w-3xl max-h-[90vh] overflow-y-auto ${
+        <DialogContent className={`max-w-5xl max-h-[90vh] overflow-y-auto ${
           darkMode ? 'bg-[#1E293B] border-white/10' : 'bg-white'
         }`}>
           <DialogHeader>
@@ -1706,6 +1786,94 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
                   />
                 </div>
               </div>
+
+              {/* Sets Section */}
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <h5 className={`mb-3 text-sm font-semibold ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                  Sets
+                </h5>
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S1</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.home.set1 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        home: { ...statsFormData.home, set1: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S2</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.home.set2 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        home: { ...statsFormData.home, set2: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S3</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.home.set3 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        home: { ...statsFormData.home, set3: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S4</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.home.set4 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        home: { ...statsFormData.home, set4: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S5</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.home.set5 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        home: { ...statsFormData.home, set5: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className={`w-px h-8 ${darkMode ? 'bg-white/20' : 'bg-gray-300'}`}></div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>Total</Label>
+                    <div className={`w-16 h-10 flex items-center justify-center rounded-md font-bold text-lg ${
+                      darkMode ? 'bg-[#C8A963]/20 text-[#C8A963]' : 'bg-[#C8A963]/10 text-[#0C2340]'
+                    }`}>
+                      {(statsFormData.home.set1 || 0) + (statsFormData.home.set2 || 0) + (statsFormData.home.set3 || 0) + (statsFormData.home.set4 || 0) + (statsFormData.home.set5 || 0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Away Team Stats */}
@@ -1780,6 +1948,94 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
                     })}
                     className={darkMode ? 'bg-white/5 border-white/10 text-white' : ''}
                   />
+                </div>
+              </div>
+
+              {/* Sets Section */}
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <h5 className={`mb-3 text-sm font-semibold ${darkMode ? 'text-white/80' : 'text-gray-700'}`}>
+                  Sets
+                </h5>
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S1</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.away.set1 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        away: { ...statsFormData.away, set1: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S2</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.away.set2 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        away: { ...statsFormData.away, set2: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S3</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.away.set3 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        away: { ...statsFormData.away, set3: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S4</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.away.set4 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        away: { ...statsFormData.away, set4: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>S5</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={statsFormData.away.set5 || ''}
+                      onChange={(e) => setStatsFormData({
+                        ...statsFormData,
+                        away: { ...statsFormData.away, set5: parseInt(e.target.value) || 0 }
+                      })}
+                      className={`w-16 text-center ${darkMode ? 'bg-white/5 border-white/10 text-white' : ''}`}
+                    />
+                  </div>
+                  <div className={`w-px h-8 ${darkMode ? 'bg-white/20' : 'bg-gray-300'}`}></div>
+                  <div className="flex flex-col items-center">
+                    <Label className={`text-xs mb-1 ${darkMode ? 'text-white/70' : 'text-gray-600'}`}>Total</Label>
+                    <div className={`w-16 h-10 flex items-center justify-center rounded-md font-bold text-lg ${
+                      darkMode ? 'bg-[#E84C4C]/20 text-[#E84C4C]' : 'bg-[#E84C4C]/10 text-[#E84C4C]'
+                    }`}>
+                      {(statsFormData.away.set1 || 0) + (statsFormData.away.set2 || 0) + (statsFormData.away.set3 || 0) + (statsFormData.away.set4 || 0) + (statsFormData.away.set5 || 0)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

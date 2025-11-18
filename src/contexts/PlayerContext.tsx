@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 
 // Interfaz simplificada para el contexto (compatibilidad con código existente)
 export interface Player {
-  id: number;
+  id: string; // ✅ CAMBIO: Ahora usa string para IDs de Firestore
   name: string;
   jerseyNumber: string;
   position: string;
@@ -21,9 +21,9 @@ interface PlayerContextType {
   activePlayers: Player[];
   loading: boolean;
   addPlayer: (player: Omit<Player, 'id'>) => Promise<void>;
-  updatePlayer: (id: number, player: Partial<Player>) => Promise<void>;
-  deletePlayer: (id: number) => Promise<void>;
-  togglePlayerStatus: (id: number) => Promise<void>;
+  updatePlayer: (id: string, player: Partial<Player>) => Promise<void>;
+  deletePlayer: (id: string) => Promise<void>;
+  togglePlayerStatus: (id: string) => Promise<void>;
   reloadPlayers: () => Promise<void>;
 }
 
@@ -32,7 +32,7 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 // Convertir jugadora de Firestore a formato del contexto
 const firestorePlayerToContextPlayer = (fp: FirestorePlayer): Player => {
   return {
-    id: parseInt(fp.id) || 0,
+    id: fp.id, // ✅ CAMBIO: Mantener el ID como string de Firestore
     name: `${fp.name} ${fp.lastName}`,
     jerseyNumber: fp.number.toString(),
     position: fp.position,
@@ -109,7 +109,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updatePlayer = async (id: number, playerData: Partial<Player>) => {
+  const updatePlayer = async (id: string, playerData: Partial<Player>) => {
     if (!currentUser) {
       toast.error('Debes estar autenticado');
       return;
@@ -132,7 +132,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         updateData.status = playerData.isActive ? 'active' : 'inactive';
       }
 
-      await playerService.updatePlayer(id.toString(), updateData, currentUser.id);
+      await playerService.updatePlayer(id, updateData, currentUser.id);
       await loadPlayers(); // Recargar lista
       toast.success('Jugadora actualizada');
     } catch (error) {
@@ -141,14 +141,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deletePlayer = async (id: number) => {
+  const deletePlayer = async (id: string) => {
     if (!currentUser) {
       toast.error('Debes estar autenticado');
       return;
     }
 
     try {
-      await playerService.deletePlayer(id.toString());
+      await playerService.deletePlayer(id);
       await loadPlayers(); // Recargar lista
       toast.success('Jugadora eliminada');
     } catch (error) {
@@ -157,14 +157,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const togglePlayerStatus = async (id: number) => {
+  const togglePlayerStatus = async (id: string) => {
     if (!currentUser) {
       toast.error('Debes estar autenticado');
       return;
     }
 
     try {
-      await playerService.togglePlayerStatus(id.toString(), currentUser.id);
+      await playerService.togglePlayerStatus(id, currentUser.id);
       await loadPlayers(); // Recargar lista
     } catch (error) {
       console.error('Error cambiando estado:', error);

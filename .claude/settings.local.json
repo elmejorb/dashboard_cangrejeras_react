@@ -8,7 +8,10 @@
       "Bash(firebase deploy:*)",
       "Bash(npx firebase-tools deploy --only firestore:rules)",
       "Bash(npm run build:*)",
-      "Bash(npm run build:dev:*)"
+      "Bash(npm run build:dev:*)",
+      "Bash(firebase functions:log:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

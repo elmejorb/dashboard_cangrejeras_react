@@ -292,6 +292,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ===== CONFIGURACIONES (Settings) =====
+    match /settings/{settingId} {
+      // Todos pueden leer configuraciones (para acceso público a posiciones, etc.)
+      allow read: if true;
+
+      // Solo admins pueden crear/modificar/eliminar configuraciones
+      allow create, update, delete: if isAdmin();
+    }
+
     // ===== DENEGAR TODO LO DEMÁS =====
     match /{document=**} {
       allow read, write: if false;
