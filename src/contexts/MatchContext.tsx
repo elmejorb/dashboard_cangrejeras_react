@@ -4,6 +4,7 @@ import { matchService } from '../services/matchService';
 import { teamService } from '../services/teamService';
 import { venueService } from '../services/venueService';
 import { liveVotingService } from '../services/liveVotingService';
+import { activityLogService } from '../services/activityLogService';
 import { useAuth } from './AuthContext';
 
 export interface MatchStats {
@@ -115,9 +116,11 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   // Load matches, teams, and venues on mount
   useEffect(() => {
     const initialize = async () => {
-      // Initialize defaults
-      await teamService.initializePrimaryTeam();
-      await venueService.initializeDefaultVenues();
+      // NOTE: Auto-initialization disabled - user can create data manually
+      // If you want to auto-create default data, uncomment the lines below:
+      // await teamService.initializePrimaryTeam();
+      // await venueService.initializeDefaultVenues();
+
       // Load all data
       await loadVenues();
       await loadTeams();
@@ -185,6 +188,21 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       setMatches([...matches, newMatch]);
       // Reload teams and venues to reflect any new ones added
       await Promise.all([loadTeams(), loadVenues()]);
+
+      // Log activity
+      await activityLogService.logActivity(
+        currentUser.id,
+        'create',
+        'match',
+        `Creó partido ${matchData.homeTeam} vs ${matchData.awayTeam}`,
+        {
+          matchId: newMatch.id,
+          homeTeam: matchData.homeTeam,
+          awayTeam: matchData.awayTeam,
+          venue: matchData.venue,
+        }
+      );
+
       toast.success('Partido creado exitosamente');
       return newMatch; // ← Devolver el match creado
     } catch (error) {
@@ -200,20 +218,52 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const originalMatch = matches.find(m => m.id === id);
+
       await matchService.updateMatch(id, matchData, currentUser.id);
       setMatches(matches.map(m => {
         if (m.id === id) {
           const updated = { ...m, ...matchData };
+
           // Update isHomeTeam if teams changed
           if (matchData.homeTeam) {
             updated.isHomeTeam = matchData.homeTeam === 'Cangrejeras' || matchData.homeTeam === 'Cangrejeras de Santurce';
           }
+
+          // Reconstruir Date si date y time vienen como strings (del formulario)
+          if (matchData.date && typeof matchData.date === 'string' && matchData.time) {
+            const [year, month, day] = matchData.date.split('-').map(Number);
+            const [hours, minutes] = matchData.time.split(':').map(Number);
+            updated.date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+            console.log('🔍 DEBUG MatchContext.updateMatch - Reconstruyendo fecha local:');
+            console.log('  📅 Input date string:', matchData.date);
+            console.log('  ⏰ Input time string:', matchData.time);
+            console.log('  ✅ Date reconstruido:', updated.date);
+            console.log('  ✅ toString():', updated.date.toString());
+          }
+
           return updated;
         }
         return m;
       }));
       // Reload teams and venues in case new ones were added
       await Promise.all([loadTeams(), loadVenues()]);
+
+      // Log activity
+      if (originalMatch) {
+        await activityLogService.logActivity(
+          currentUser.id,
+          'update',
+          'match',
+          `Actualizó partido ${originalMatch.homeTeam} vs ${originalMatch.awayTeam}`,
+          {
+            matchId: id,
+            changes: Object.keys(matchData).join(', '),
+          }
+        );
+      }
+
       toast.success('Partido actualizado exitosamente');
     } catch (error) {
       toast.error('Error al actualizar partido');
@@ -222,9 +272,30 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteMatch = async (id: string) => {
+    if (!currentUser) {
+      toast.error('Debes estar autenticado');
+      return;
+    }
+
     try {
+      const matchToDelete = matches.find(m => m.id === id);
+
       await matchService.deleteMatch(id);
       setMatches(matches.filter(m => m.id !== id));
+
+      // Log activity
+      if (matchToDelete) {
+        await activityLogService.logActivity(
+          currentUser.id,
+          'delete',
+          'match',
+          `Eliminó partido ${matchToDelete.homeTeam} vs ${matchToDelete.awayTeam}`,
+          {
+            matchId: id,
+          }
+        );
+      }
+
       toast.success('Partido eliminado exitosamente');
     } catch (error) {
       toast.error('Error al eliminar partido');
@@ -280,6 +351,22 @@ export function MatchProvider({ children }: { children: ReactNode }) {
         upcoming: 'Próximo',
         completed: 'Finalizado'
       };
+
+      // Log activity
+      const match = matches.find(m => m.id === id);
+      if (match) {
+        await activityLogService.logActivity(
+          currentUser.id,
+          'update',
+          'match',
+          `Cambió estado de partido ${match.homeTeam} vs ${match.awayTeam} a ${statusLabels[status]}`,
+          {
+            matchId: id,
+            newStatus: status,
+          }
+        );
+      }
+
       toast.success(`Estado actualizado a ${statusLabels[status]}`);
     } catch (error) {
       toast.error('Error al actualizar estado');
@@ -298,6 +385,21 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       setMatches(matches.map(m =>
         m.id === id ? { ...m, statistics: stats } : m
       ));
+
+      // Log activity
+      const match = matches.find(m => m.id === id);
+      if (match) {
+        await activityLogService.logActivity(
+          currentUser.id,
+          'update',
+          'match',
+          `Actualizó estadísticas del partido ${match.homeTeam} vs ${match.awayTeam}`,
+          {
+            matchId: id,
+          }
+        );
+      }
+
       toast.success('Estadísticas actualizadas');
     } catch (error) {
       toast.error('Error al actualizar estadísticas');

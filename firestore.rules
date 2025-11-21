@@ -41,6 +41,18 @@ service cloud.firestore {
       // Solo Super Admins pueden crear/eliminar/modificar roles
       allow create, delete: if isSuperAdmin();
       allow update: if isSuperAdmin();
+
+      // SUB-COLECCIÓN: LOGS DE ACTIVIDAD POR ADMIN
+      match /activity_logs/{logId} {
+        // Los admins pueden leer sus propios logs
+        allow read: if isOwner(adminId) || isAdmin();
+
+        // Los admins pueden crear logs en su propia colección
+        allow create: if isAuthenticated() && isOwner(adminId);
+
+        // No se puede modificar ni eliminar el historial
+        allow update, delete: if false;
+      }
     }
 
     // ===== USUARIOS DE LA APP (Fans) =====

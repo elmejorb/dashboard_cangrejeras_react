@@ -11,7 +11,11 @@
       "Bash(npm run build:dev:*)",
       "Bash(firebase functions:log:*)",
       "Bash(npm run deploy:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(firebase functions:delete:*)",
+      "Bash(tar:*)"
     ],
     "deny": [],
     "ask": []

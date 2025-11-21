@@ -58,8 +58,11 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [statsMatch, setStatsMatch] = useState<Match | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(9); // October (0-indexed)
-  const [selectedYear] = useState(2025);
+
+  // Initialize calendar with current month and year
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth()); // Current month (0-indexed)
+  const [selectedYear] = useState(currentDate.getFullYear()); // Current year
   const [filterStatus, setFilterStatus] = useState<string>('all');
   
   // Venue autocomplete state
@@ -142,10 +145,28 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
     if (match) {
       setEditingMatch(match);
 
-      // Extraer fecha y hora del timestamp
+      // Extraer fecha y hora del timestamp usando zona horaria LOCAL (no UTC)
       const matchDate = match.date instanceof Date ? match.date : new Date(match.date);
-      const dateString = matchDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      const timeString = matchDate.toTimeString().substring(0, 5); // HH:MM
+
+      // DEBUG: Ver qué está pasando con la fecha
+      console.log('🔍 DEBUG - Editando partido:', match.homeTeam, 'vs', match.awayTeam);
+      console.log('  📅 match.date recibido:', match.date);
+      console.log('  📅 matchDate (Date object):', matchDate);
+      console.log('  📅 matchDate.toISOString():', matchDate.toISOString());
+      console.log('  📅 matchDate.toString():', matchDate.toString());
+
+      // Usar getFullYear, getMonth, getDate en lugar de toISOString para evitar conversión UTC
+      const year = matchDate.getFullYear();
+      const month = String(matchDate.getMonth() + 1).padStart(2, '0');
+      const day = String(matchDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`; // YYYY-MM-DD en zona local
+
+      const hours = String(matchDate.getHours()).padStart(2, '0');
+      const minutes = String(matchDate.getMinutes()).padStart(2, '0');
+      const timeString = `${hours}:${minutes}`; // HH:MM en zona local
+
+      console.log('  ✅ Fecha para formulario:', dateString);
+      console.log('  ✅ Hora para formulario:', timeString);
 
       setFormData({
         ...match,
@@ -176,33 +197,53 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
   };
 
   const handleOpenStatsDialog = (match: Match) => {
-    setStatsMatch(match);
-    if (match.statistics) {
+    // IMPORTANTE: Buscar el partido más reciente del contexto en lugar de usar el parámetro
+    // Esto asegura que siempre tengamos los datos más actuales, incluso si el modal
+    // se abre inmediatamente después de guardar (antes de que React re-renderice la lista)
+    const latestMatch = matches.find((m: Match) => m.id === match.id) || match;
+
+    console.log('🔍 DEBUG handleOpenStatsDialog:');
+    console.log('  📋 Match del parámetro:', match);
+    console.log('  ✅ Match más reciente del contexto:', latestMatch);
+    console.log('  📊 Statistics del match más reciente:', latestMatch.statistics);
+
+    setStatsMatch(latestMatch);
+    if (latestMatch.statistics) {
       // Asegurar que todos los campos existan, incluyendo los sets (para partidos antiguos)
-      setStatsFormData({
+      console.log('  🔍 Valores directos de latestMatch.statistics.home.set5:', latestMatch.statistics.home.set5);
+      console.log('  🔍 Valores directos de latestMatch.statistics.away.set5:', latestMatch.statistics.away.set5);
+      console.log('  🔍 typeof home.set5:', typeof latestMatch.statistics.home.set5);
+      console.log('  🔍 typeof away.set5:', typeof latestMatch.statistics.away.set5);
+
+      const formData = {
         home: {
-          aces: match.statistics.home.aces || 0,
-          blocks: match.statistics.home.blocks || 0,
-          attacks: match.statistics.home.attacks || 0,
-          digs: match.statistics.home.digs || 0,
-          set1: match.statistics.home.set1 || 0,
-          set2: match.statistics.home.set2 || 0,
-          set3: match.statistics.home.set3 || 0,
-          set4: match.statistics.home.set4 || 0,
-          set5: match.statistics.home.set5 || 0
+          aces: latestMatch.statistics.home.aces ?? 0,
+          blocks: latestMatch.statistics.home.blocks ?? 0,
+          attacks: latestMatch.statistics.home.attacks ?? 0,
+          digs: latestMatch.statistics.home.digs ?? 0,
+          set1: latestMatch.statistics.home.set1 ?? 0,
+          set2: latestMatch.statistics.home.set2 ?? 0,
+          set3: latestMatch.statistics.home.set3 ?? 0,
+          set4: latestMatch.statistics.home.set4 ?? 0,
+          set5: latestMatch.statistics.home.set5 ?? 0
         },
         away: {
-          aces: match.statistics.away.aces || 0,
-          blocks: match.statistics.away.blocks || 0,
-          attacks: match.statistics.away.attacks || 0,
-          digs: match.statistics.away.digs || 0,
-          set1: match.statistics.away.set1 || 0,
-          set2: match.statistics.away.set2 || 0,
-          set3: match.statistics.away.set3 || 0,
-          set4: match.statistics.away.set4 || 0,
-          set5: match.statistics.away.set5 || 0
+          aces: latestMatch.statistics.away.aces ?? 0,
+          blocks: latestMatch.statistics.away.blocks ?? 0,
+          attacks: latestMatch.statistics.away.attacks ?? 0,
+          digs: latestMatch.statistics.away.digs ?? 0,
+          set1: latestMatch.statistics.away.set1 ?? 0,
+          set2: latestMatch.statistics.away.set2 ?? 0,
+          set3: latestMatch.statistics.away.set3 ?? 0,
+          set4: latestMatch.statistics.away.set4 ?? 0,
+          set5: latestMatch.statistics.away.set5 ?? 0
         }
-      });
+      };
+
+      console.log('  📝 Form data que se va a establecer:', formData);
+      console.log('  📝 Form data.home.set5:', formData.home.set5);
+      console.log('  📝 Form data.away.set5:', formData.away.set5);
+      setStatsFormData(formData);
     } else {
       setStatsFormData({
         home: { aces: 0, blocks: 0, attacks: 0, digs: 0, set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 },
@@ -481,11 +522,19 @@ export function MatchManagement({ darkMode }: MatchManagementProps) {
         if (completeStats.home.set5 > completeStats.away.set5) homeSetsWon++;
         else if (completeStats.away.set5 > completeStats.home.set5) awaySetsWon++;
 
-        // Actualizar estadísticas completas (esto creará los campos que falten en Firestore)
+        // Actualizar tanto las estadísticas como los scores en una sola operación para evitar race conditions
         await updateMatchStats(statsMatch.id, completeStats);
 
         // Actualizar los scores del partido basados en sets ganados
+        // Nota: esto se hace en una segunda llamada porque updateMatch también actualiza otros campos
         await updateMatch(statsMatch.id, {
+          homeScore: homeSetsWon,
+          awayScore: awaySetsWon,
+          statistics: completeStats // Incluir statistics aquí también para asegurar sincronización
+        });
+
+        console.log('✅ Estadísticas y scores guardados:', {
+          statistics: completeStats,
           homeScore: homeSetsWon,
           awayScore: awaySetsWon
         });

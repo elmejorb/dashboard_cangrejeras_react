@@ -129,10 +129,11 @@ export function VotingProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Initialize default templates if needed with REAL player IDs from Firestore
-      const activePlayerIds = activePlayers.map(p => p.id);
-      console.log('📊 Inicializando plantillas con jugadoras reales:', activePlayerIds);
-      await votingTemplateService.initializeDefaultTemplates(activePlayerIds);
+      // NOTE: initializeDefaultTemplates disabled - user can create templates manually
+      // If you want to auto-create default templates, uncomment the lines below:
+      // const activePlayerIds = activePlayers.map(p => p.id);
+      // console.log('📊 Inicializando plantillas con jugadoras reales:', activePlayerIds);
+      // await votingTemplateService.initializeDefaultTemplates(activePlayerIds);
 
       // Load all templates
       const templatesData = await votingTemplateService.getAllTemplates();
@@ -143,7 +144,7 @@ export function VotingProvider({ children }: { children: ReactNode }) {
         updatedAt: t.updatedAt.toISOString(),
       })));
 
-      console.log(`✅ ${templatesData.length} plantillas cargadas con jugadoras reales`);
+      console.log(`✅ ${templatesData.length} plantillas cargadas desde Firebase`);
     } catch (error) {
       console.error('Error loading voting templates:', error);
     }
@@ -250,36 +251,9 @@ export function VotingProvider({ children }: { children: ReactNode }) {
     autoCloseVoting();
   }, [matches]);
 
-  // Poll Instances - Initialize with demo poll
-  const [polls, setPolls] = useState<PollInstance[]>(() => {
-    const demoPlayerIds = players
-      .filter(p => p.active)
-      .slice(0, 4)
-      .map(p => p.id);
-    
-    return [
-      {
-        id: 'poll-1',
-        templateId: 'template-1',
-        matchId: 1,
-        title: 'MVP del Partido',
-        description: '¡Vota por la jugadora más valiosa del partido!',
-        isActive: true,
-        status: 'active',
-        autoStartEnabled: true,
-        scheduledStartEnabled: false,
-        totalVotes: 1234,
-        userHasVoted: false,
-        options: demoPlayerIds.map(playerId => ({
-          playerId,
-          votes: Math.floor(Math.random() * 400),
-          percentage: 0,
-        })),
-        createdAt: new Date().toISOString(),
-        startedAt: new Date().toISOString(),
-      },
-    ];
-  });
+  // Poll Instances - No demo data, start with empty array
+  // NOTE: Demo poll removed to avoid auto-creating "MVP del Partido"
+  const [polls, setPolls] = useState<PollInstance[]>([]);
 
   const [previousLiveMatchId, setPreviousLiveMatchId] = useState<number | null>(null);
   const [checkedSchedules, setCheckedSchedules] = useState<Set<string>>(new Set());
@@ -542,11 +516,18 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 
   const deleteTemplate = async (id: string): Promise<void> => {
     try {
+      console.log('🗑️ Eliminando plantilla:', id);
       await votingTemplateService.deleteTemplate(id);
-      setTemplates(templates.filter(t => t.id !== id));
+      console.log('✅ Plantilla eliminada de Firebase');
+
+      const newTemplates = templates.filter(t => t.id !== id);
+      console.log('📊 Actualizando estado local. Plantillas antes:', templates.length, 'Plantillas después:', newTemplates.length);
+      setTemplates(newTemplates);
+
       toast.success('Plantilla eliminada');
-    } catch (error) {
-      toast.error('Error al eliminar plantilla');
+    } catch (error: any) {
+      console.error('❌ Error al eliminar plantilla:', error);
+      toast.error('Error al eliminar plantilla: ' + (error.message || 'Error desconocido'));
       throw error;
     }
   };

@@ -18,7 +18,7 @@ export interface VotingTemplate {
   description: string;
   defaultAutoStart: boolean;
   defaultScheduledStart: boolean;
-  defaultPlayerIds: number[]; // IDs de jugadoras por defecto
+  defaultPlayerIds: string[]; // IDs de jugadoras por defecto (Firebase document IDs)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,7 +28,7 @@ export interface VotingTemplateInput {
   description: string;
   defaultAutoStart: boolean;
   defaultScheduledStart: boolean;
-  defaultPlayerIds: number[];
+  defaultPlayerIds: string[];
 }
 
 const COLLECTION_NAME = 'voting_templates';
@@ -171,7 +171,7 @@ export const votingTemplateService = {
   /**
    * Inicializa plantillas por defecto
    */
-  initializeDefaultTemplates: async (activePlayerIds: number[]): Promise<void> => {
+  initializeDefaultTemplates: async (activePlayerIds: string[]): Promise<void> => {
     try {
       const existing = await votingTemplateService.getAllTemplates();
       if (existing.length > 0) {

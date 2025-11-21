@@ -24,8 +24,10 @@ export function StandingsManagement({ darkMode }: StandingsManagementProps) {
   const loadStandings = async () => {
     setIsLoading(true);
     try {
-      // Solo inicializar datos por defecto una vez
-      await standingsService.initializeDefaultStandings();
+      // NOTE: Auto-initialization disabled - user can create standings manually
+      // If you want to auto-create default standings data, uncomment the line below:
+      // await standingsService.initializeDefaultStandings();
+
       const data = await standingsService.getAllStandings();
       console.log('📊 Standings cargados desde Firestore:', data);
       setStandings(data);

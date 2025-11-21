@@ -14,6 +14,9 @@ import { StatsCard, ActionCard, CardPremium } from "./CardPremium";
 import { BadgePremium, DotBadge } from "./BadgePremium";
 import { playerService } from "../../services/playerService";
 import { matchService } from "../../services/matchService";
+import { activityLogService } from "../../services/activityLogService";
+import { useAuth } from "../../contexts/AuthContext";
+import { ActivityLog } from "../../utils/auth";
 
 interface DashboardOverviewProps {
   darkMode: boolean;
@@ -21,13 +24,16 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverviewProps) {
+  const { currentUser } = useAuth();
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [activePlayers, setActivePlayers] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
   const [upcomingMatches, setUpcomingMatches] = useState(0);
+  const [recentActivityLogs, setRecentActivityLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
     loadStats();
+    loadRecentActivity();
   }, []);
 
   const loadStats = async () => {
@@ -43,6 +49,23 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
       setUpcomingMatches(matchStats.upcomingMatches);
     } catch (error) {
       console.error('Error loading stats:', error);
+    }
+  };
+
+  const loadRecentActivity = async () => {
+    if (!currentUser) {
+      console.log('🔍 loadRecentActivity: No hay currentUser');
+      return;
+    }
+
+    try {
+      console.log('🔍 loadRecentActivity: Cargando logs para userId:', currentUser.id);
+      // Cargar las últimas 5 actividades del usuario
+      const logs = await activityLogService.getRecentLogs(currentUser.id, 5);
+      console.log('🔍 loadRecentActivity: Logs recibidos:', logs);
+      setRecentActivityLogs(logs);
+    } catch (error) {
+      console.error('Error loading recent activity:', error);
     }
   };
 
@@ -98,70 +121,75 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
   ];
 
   const quickActions = [
-    { 
-      icon: UserPlus, 
-      label: 'Gestionar Jugadoras', 
+    {
+      icon: UserPlus,
+      label: 'Gestionar Jugadoras',
       description: 'Ver y editar el roster del equipo',
       color: '#C8A963',
       action: () => setActiveSection('players')
     },
-    { 
-      icon: CalendarPlus, 
-      label: 'Gestionar Partidos', 
+    {
+      icon: CalendarPlus,
+      label: 'Gestionar Partidos',
       description: 'Programar y actualizar encuentros',
       color: '#E01E37',
       action: () => setActiveSection('matches')
     },
-    { 
-      icon: Vote, 
-      label: 'Votaciones en Vivo', 
+    {
+      icon: Vote,
+      label: 'Votaciones en Vivo',
       description: 'Activar polls para los fans',
       color: '#8B5CF6',
       action: () => setActiveSection('voting')
     },
-    { 
-      icon: FileText, 
-      label: 'Gestionar Noticias', 
+    {
+      icon: FileText,
+      label: 'Gestionar Noticias',
       description: 'Publicar artículos y actualizaciones',
       color: '#10B981',
       action: () => setActiveSection('news')
     },
   ];
 
-  const recentActivity = [
-    { 
-      user: 'Admin', 
-      action: 'publicó un partido', 
-      target: 'CAN vs CRI', 
-      time: 'Hace 5 min',
-      status: 'live',
-      color: '#E01E37'
-    },
-    { 
-      user: 'Content Manager', 
-      action: 'actualizó estadísticas de', 
-      target: 'Andrea Rangel', 
-      time: 'Hace 15 min',
-      status: 'updated',
-      color: '#3B82F6'
-    },
-    { 
-      user: 'Admin', 
-      action: 'inició votación para', 
-      target: 'Partido vs Criollas', 
-      time: 'Hace 1 hora',
-      status: 'live',
-      color: '#8B5CF6'
-    },
-    { 
-      user: 'Content Manager', 
-      action: 'guardó borrador de', 
-      target: 'Noticia: Victoria importante', 
-      time: 'Hace 2 horas',
-      status: 'draft',
-      color: '#F97316'
-    },
-  ];
+  // Helper para obtener color según el tipo de actividad
+  const getActivityColor = (type: ActivityLog['type']): string => {
+    const colors = {
+      match: '#E01E37',
+      player: '#C8A963',
+      voting: '#8B5CF6',
+      news: '#10B981',
+      standings: '#F59E0B',
+      media: '#EC4899',
+      settings: '#6B7280',
+      auth: '#3B82F6',
+    };
+    return colors[type] || '#6B7280';
+  };
+
+  // Helper para obtener status de la actividad
+  const getActivityStatus = (action: string): 'live' | 'updated' | 'published' | 'draft' => {
+    if (action === 'create') return 'published';
+    if (action === 'update') return 'updated';
+    if (action === 'activate') return 'live';
+    return 'updated';
+  };
+
+  // Formatear timestamp relativo
+  const formatRelativeTime = (timestamp: string): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Hace un momento';
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    if (diffHours < 24) return `Hace ${diffHours}h`;
+    if (diffDays < 7) return `Hace ${diffDays}d`;
+
+    return `Hace ${diffDays}d`;
+  };
 
   const statusLabels = {
     published: 'Publicado',
@@ -169,6 +197,22 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
     live: 'En Vivo',
     draft: 'Borrador',
   };
+
+  // Convertir logs de actividad al formato del UI
+  const recentActivity = recentActivityLogs.map((log) => {
+    const activity = {
+      user: currentUser?.name || 'Admin',
+      action: log.description.split(' ').slice(0, 3).join(' '), // Primeras 3 palabras
+      target: log.description.split(' ').slice(3).join(' ') || log.description, // Resto de la descripción
+      time: formatRelativeTime(log.timestamp),
+      status: getActivityStatus(log.action),
+      color: getActivityColor(log.type),
+    };
+    console.log('🔍 Activity formateada:', activity);
+    return activity;
+  });
+
+  console.log('🔍 Total recentActivity:', recentActivity.length);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -271,7 +315,18 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
             </div>
             
             <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
+              {recentActivity.length === 0 ? (
+                <div className="text-center py-8">
+                  <TrendingUp
+                    size={48}
+                    className={`mx-auto mb-3 ${darkMode ? 'text-white/20' : 'text-gray-300'}`}
+                  />
+                  <p className={`text-sm ${darkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                    No hay actividad reciente
+                  </p>
+                </div>
+              ) : (
+                recentActivity.map((activity, index) => (
                 <div 
                   key={index} 
                   className="flex gap-3 animate-scale-in"
@@ -322,7 +377,8 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
                     </div>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </CardPremium>
         </div>

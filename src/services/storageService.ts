@@ -340,5 +340,125 @@ export const storageService = {
       console.error('Error getting file URL:', error);
       throw new Error('Error al obtener URL del archivo');
     }
+  },
+
+  /**
+   * Upload general media file to Storage
+   * Path: /{folder}/{timestamp}_{fileName}
+   */
+  uploadMediaFile: async (
+    file: File,
+    folder: 'media' | 'news' | 'players' | 'sponsors' | 'teams',
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<{url: string; path: string; name: string}> => {
+    try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Solo se permiten archivos de imagen');
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('La imagen debe ser menor a 10MB');
+      }
+
+      // Create unique filename
+      const timestamp = Date.now();
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${timestamp}_${cleanName}`;
+      const path = `${folder}/${fileName}`;
+
+      const storageRef = ref(storage, path);
+
+      if (onProgress) {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        return new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot: UploadTaskSnapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              onProgress({
+                progress,
+                bytesTransferred: snapshot.bytesTransferred,
+                totalBytes: snapshot.totalBytes
+              });
+            },
+            (error) => {
+              console.error('Upload error:', error);
+              reject(new Error('Error al subir la imagen'));
+            },
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve({
+                url: downloadURL,
+                path,
+                name: fileName
+              });
+            }
+          );
+        });
+      } else {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return {
+          url: downloadURL,
+          path,
+          name: fileName
+        };
+      }
+    } catch (error: any) {
+      console.error('Error uploading media file:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * List all files in a folder
+   */
+  listFiles: async (folder: string): Promise<Array<{name: string; url: string; path: string}>> => {
+    try {
+      const { listAll } = await import('firebase/storage');
+      const folderRef = ref(storage, folder);
+      const result = await listAll(folderRef);
+
+      const files = await Promise.all(
+        result.items.map(async (itemRef) => {
+          const url = await getDownloadURL(itemRef);
+          return {
+            name: itemRef.name,
+            url,
+            path: itemRef.fullPath
+          };
+        })
+      );
+
+      return files;
+    } catch (error: any) {
+      console.error('Error listing files:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Delete file by path
+   */
+  deleteFileByPath: async (path: string): Promise<void> => {
+    try {
+      const fileRef = ref(storage, path);
+      await deleteObject(fileRef);
+    } catch (error: any) {
+      console.error('Error deleting file:', error);
+      throw new Error('Error al eliminar archivo');
+    }
+  },
+
+  /**
+   * Format file size
+   */
+  formatFileSize: (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 };

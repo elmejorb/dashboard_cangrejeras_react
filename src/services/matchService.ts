@@ -101,8 +101,20 @@ export const matchService = {
       if (matchData.date instanceof Date) {
         matchTimestamp = matchData.date;
       } else if (typeof matchData.date === 'string' && matchData.time) {
-        // Construir timestamp desde date string y time
-        matchTimestamp = new Date(`${matchData.date}T${matchData.time}`);
+        // Construir timestamp desde date string (YYYY-MM-DD) y time (HH:MM)
+        // Usar zona horaria LOCAL explícitamente (no UTC)
+        const [year, month, day] = matchData.date.split('-').map(Number);
+        const [hours, minutes] = matchData.time.split(':').map(Number);
+
+        // Crear Date con componentes individuales (se interpreta en zona horaria local)
+        matchTimestamp = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+        console.log('🔍 DEBUG createMatch - Construyendo fecha:');
+        console.log('  📅 Input date string:', matchData.date);
+        console.log('  ⏰ Input time string:', matchData.time);
+        console.log('  📅 Componentes: year=', year, 'month=', month, 'day=', day, 'hours=', hours, 'minutes=', minutes);
+        console.log('  ✅ Timestamp construido:', matchTimestamp);
+        console.log('  ✅ toString():', matchTimestamp.toString());
       } else {
         throw new Error('Se requiere date (Date o string con time)');
       }
@@ -483,8 +495,21 @@ export const matchService = {
         if (matchData.date instanceof Date) {
           cleanData.date = Timestamp.fromDate(matchData.date);
         } else if (typeof matchData.date === 'string' && matchData.time) {
-          // Si date es string y hay time, construir el timestamp
-          const matchTimestamp = new Date(`${matchData.date}T${matchData.time}`);
+          // Construir timestamp desde date string (YYYY-MM-DD) y time (HH:MM)
+          // Usar zona horaria LOCAL explícitamente (no UTC)
+          const [year, month, day] = matchData.date.split('-').map(Number);
+          const [hours, minutes] = matchData.time.split(':').map(Number);
+
+          // Crear Date con componentes individuales (se interpreta en zona horaria local)
+          const matchTimestamp = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+          console.log('🔍 DEBUG updateMatch - Construyendo fecha:');
+          console.log('  📅 Input date string:', matchData.date);
+          console.log('  ⏰ Input time string:', matchData.time);
+          console.log('  📅 Componentes: year=', year, 'month=', month, 'day=', day, 'hours=', hours, 'minutes=', minutes);
+          console.log('  ✅ Timestamp construido:', matchTimestamp);
+          console.log('  ✅ toString():', matchTimestamp.toString());
+
           cleanData.date = Timestamp.fromDate(matchTimestamp);
         }
       }

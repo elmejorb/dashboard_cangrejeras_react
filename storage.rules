@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ===== FUNCIONES HELPER =====
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated();
+    }
+
+    function isValidImageSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // ===== MEDIA GENERAL =====
+    match /media/{fileName} {
+      // Todos pueden leer (para la app pública)
+      allow read: if true;
+
+      // Solo admins autenticados pueden subir/eliminar
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== NOTICIAS =====
+    match /news/{fileName} {
+      // Todos pueden leer noticias publicadas
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar imágenes de noticias
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== JUGADORAS =====
+    match /players/{playerId}/{fileName} {
+      // Todos pueden leer (para la app pública)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar fotos de jugadoras
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    match /players/{fileName} {
+      // Todos pueden leer (para la app pública)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar fotos de jugadoras
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== PATROCINADORES =====
+    match /sponsors/{sponsorId}/{fileName} {
+      // Todos pueden leer (para mostrar sponsors en la app)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar logos de sponsors
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    match /sponsors/{fileName} {
+      // Todos pueden leer (para mostrar sponsors en la app)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar logos de sponsors
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== EQUIPOS =====
+    match /teams/{teamId}/{fileName} {
+      // Todos pueden leer (para mostrar equipos en la app)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar logos de equipos
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    match /teams/{fileName} {
+      // Todos pueden leer (para mostrar equipos en la app)
+      allow read: if true;
+
+      // Solo admins pueden subir/eliminar logos de equipos
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== AVATARES DE ADMINS =====
+    match /media/{adminId}/{fileName} {
+      // Solo el admin dueño puede leer/escribir su avatar
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage() && isValidImageSize();
+    }
+
+    // ===== DENEGAR TODO LO DEMÁS =====
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
