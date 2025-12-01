@@ -1,5 +1,4 @@
-import { Search, Bell, ChevronRight, Save, Check, User as UserIcon, Settings, LogOut, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { Search, ChevronRight, Check, User as UserIcon, Settings, LogOut, ChevronDown } from "lucide-react";
 import { User } from "../../utils/auth";
 import {
   DropdownMenu,
@@ -21,7 +20,6 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ darkMode, activeSection, saveStatus = 'idle', currentUser, onLogout, onNavigateToProfile }: AdminHeaderProps) {
-  const [notifications] = useState(3);
   
   // Get user initials
   const getUserInitials = (name: string) => {
@@ -123,22 +121,6 @@ export function AdminHeader({ darkMode, activeSection, saveStatus = 'idle', curr
               style={{ width: '240px' }}
             />
           </div>
-
-          {/* Notifications */}
-          <button 
-            className={`relative p-2 rounded-lg transition-all duration-200 ${
-              darkMode
-                ? 'hover:bg-white/10 text-white/70 hover:text-white'
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Bell size={20} />
-            {notifications > 0 && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#E01E37] rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-semibold">{notifications}</span>
-              </div>
-            )}
-          </button>
 
           {/* User Profile Dropdown */}
           <DropdownMenu>

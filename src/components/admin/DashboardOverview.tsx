@@ -17,13 +17,15 @@ import { matchService } from "../../services/matchService";
 import { activityLogService } from "../../services/activityLogService";
 import { useAuth } from "../../contexts/AuthContext";
 import { ActivityLog } from "../../utils/auth";
+import { UserRole, canAccessSection, Section } from "../../utils/permissions";
 
 interface DashboardOverviewProps {
   darkMode: boolean;
   setActiveSection: (section: string) => void;
+  userRole?: UserRole;
 }
 
-export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverviewProps) {
+export function DashboardOverview({ darkMode, setActiveSection, userRole = 'Super Admin' }: DashboardOverviewProps) {
   const { currentUser } = useAuth();
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [activePlayers, setActivePlayers] = useState(0);
@@ -120,8 +122,9 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
     },
   ];
 
-  const quickActions = [
+  const allQuickActions = [
     {
+      id: 'players' as Section,
       icon: UserPlus,
       label: 'Gestionar Jugadoras',
       description: 'Ver y editar el roster del equipo',
@@ -129,6 +132,7 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
       action: () => setActiveSection('players')
     },
     {
+      id: 'matches' as Section,
       icon: CalendarPlus,
       label: 'Gestionar Partidos',
       description: 'Programar y actualizar encuentros',
@@ -136,6 +140,7 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
       action: () => setActiveSection('matches')
     },
     {
+      id: 'voting' as Section,
       icon: Vote,
       label: 'Votaciones en Vivo',
       description: 'Activar polls para los fans',
@@ -143,6 +148,7 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
       action: () => setActiveSection('voting')
     },
     {
+      id: 'news' as Section,
       icon: FileText,
       label: 'Gestionar Noticias',
       description: 'Publicar artículos y actualizaciones',
@@ -150,6 +156,9 @@ export function DashboardOverview({ darkMode, setActiveSection }: DashboardOverv
       action: () => setActiveSection('news')
     },
   ];
+
+  // Filter quick actions based on user role permissions
+  const quickActions = allQuickActions.filter(action => canAccessSection(userRole, action.id));
 
   // Helper para obtener color según el tipo de actividad
   const getActivityColor = (type: ActivityLog['type']): string => {

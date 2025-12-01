@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
+import { UserRole, canAccessSection, Section } from "../../utils/permissions";
 
 interface AdminSidebarProps {
   darkMode: boolean;
@@ -21,27 +22,44 @@ interface AdminSidebarProps {
   setActiveSection: (section: string) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  userRole: UserRole;
+  userName?: string;
 }
 
-export function AdminSidebar({ 
-  darkMode, 
-  toggleDarkMode, 
-  activeSection, 
+export function AdminSidebar({
+  darkMode,
+  toggleDarkMode,
+  activeSection,
   setActiveSection,
   collapsed,
-  setCollapsed 
+  setCollapsed,
+  userRole,
+  userName
 }: AdminSidebarProps) {
-  const menuItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', color: '#3B82F6' },
-    { id: 'players', icon: Users, label: 'Gestión de Jugadoras', color: '#0C2340' },
-    { id: 'matches', icon: Calendar, label: 'Partidos', color: '#10B981' },
-    { id: 'standings', icon: Trophy, label: 'Tabla de Posiciones', color: '#C8A963' },
-    { id: 'voting', icon: BarChart3, label: 'Votaciones en Vivo', color: '#E01E37' },
-    { id: 'news', icon: Newspaper, label: 'Noticias', color: '#F97316' },
-    { id: 'media', icon: ImageIcon, label: 'Contenido Multimedia', color: '#8B5CF6' },
-    { id: 'banners', icon: Megaphone, label: 'Banners de Promoción', color: '#EC4899' },
-    { id: 'settings', icon: Settings, label: 'Configuración', color: '#475569' },
+  const allMenuItems = [
+    { id: 'dashboard' as Section, icon: LayoutDashboard, label: 'Dashboard', color: '#3B82F6' },
+    { id: 'players' as Section, icon: Users, label: 'Gestión de Jugadoras', color: '#0C2340' },
+    { id: 'matches' as Section, icon: Calendar, label: 'Partidos', color: '#10B981' },
+    { id: 'standings' as Section, icon: Trophy, label: 'Tabla de Posiciones', color: '#C8A963' },
+    { id: 'voting' as Section, icon: BarChart3, label: 'Votaciones en Vivo', color: '#E01E37' },
+    { id: 'news' as Section, icon: Newspaper, label: 'Noticias', color: '#F97316' },
+    { id: 'media' as Section, icon: ImageIcon, label: 'Contenido Multimedia', color: '#8B5CF6' },
+    { id: 'banners' as Section, icon: Megaphone, label: 'Banners de Promoción', color: '#EC4899' },
+    { id: 'settings' as Section, icon: Settings, label: 'Configuración', color: '#475569' },
   ];
+
+  // Filter menu items based on user role permissions
+  const menuItems = allMenuItems.filter(item => canAccessSection(userRole, item.id));
+
+  // Get user initials
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <aside 
@@ -132,11 +150,13 @@ export function AdminSidebar({
           {!collapsed && (
             <div className="flex items-center gap-3 px-3 py-2">
               <div className="w-9 h-9 rounded-full bg-[#C8A963] flex items-center justify-center">
-                <span className="text-white text-sm font-semibold">AD</span>
+                <span className="text-white text-sm font-semibold">
+                  {userName ? getUserInitials(userName) : 'AD'}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-white text-sm font-medium truncate">Admin</div>
-                <div className="text-white/60 text-xs truncate">Super Admin</div>
+                <div className="text-white text-sm font-medium truncate">{userName || 'Admin'}</div>
+                <div className="text-white/60 text-xs truncate">{userRole}</div>
               </div>
             </div>
           )}

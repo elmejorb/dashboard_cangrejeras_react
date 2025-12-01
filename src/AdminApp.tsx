@@ -4,6 +4,7 @@ import { AdminHeader } from "./components/admin/AdminHeader";
 import { AdminLoadingFallback } from "./components/admin/LoadingStates";
 import { Toaster } from "./components/ui/sonner";
 import { User } from "./utils/auth";
+import { canAccessSection, getDefaultSection, Section } from "./utils/permissions";
 
 // Lazy load components
 const DashboardOverview = lazy(() => import("./components/admin/DashboardOverview").then(m => ({ default: m.DashboardOverview })));
@@ -36,6 +37,23 @@ export default function AdminApp({ currentUser, onLogout }: AdminAppProps) {
     setDarkMode(!darkMode);
   };
 
+  // Handle section change with permission check
+  const handleSetActiveSection = (section: string) => {
+    // Always allow profile access
+    if (section === 'profile') {
+      setActiveSection(section);
+      return;
+    }
+
+    // Check if user has permission to access the section
+    if (canAccessSection(user.role, section as Section)) {
+      setActiveSection(section);
+    } else {
+      // Redirect to default section if no permission
+      setActiveSection(getDefaultSection(user.role));
+    }
+  };
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -44,18 +62,25 @@ export default function AdminApp({ currentUser, onLogout }: AdminAppProps) {
     }
   }, [darkMode]);
 
+  // Validate current section on user change (role might have changed)
+  useEffect(() => {
+    if (activeSection !== 'profile' && !canAccessSection(user.role, activeSection as Section)) {
+      setActiveSection(getDefaultSection(user.role));
+    }
+  }, [user.role]);
+
   const renderSection = () => {
     return (
       <Suspense fallback={<AdminLoadingFallback darkMode={darkMode} />}>
-        {activeSection === 'dashboard' && <DashboardOverview darkMode={darkMode} setActiveSection={setActiveSection} />}
-        {activeSection === 'players' && <PlayerManagement darkMode={darkMode} />}
-        {activeSection === 'matches' && <MatchManagement darkMode={darkMode} />}
-        {activeSection === 'voting' && <VotingManagement darkMode={darkMode} />}
-        {activeSection === 'news' && <NewsManagement darkMode={darkMode} />}
-        {activeSection === 'standings' && <StandingsManagement darkMode={darkMode} />}
-        {activeSection === 'media' && <MediaManagement darkMode={darkMode} />}
-        {activeSection === 'banners' && <BannerManagement darkMode={darkMode} />}
-        {activeSection === 'settings' && <SettingsManagement darkMode={darkMode} />}
+        {activeSection === 'dashboard' && <DashboardOverview darkMode={darkMode} setActiveSection={handleSetActiveSection} userRole={user.role} />}
+        {activeSection === 'players' && canAccessSection(user.role, 'players') && <PlayerManagement darkMode={darkMode} />}
+        {activeSection === 'matches' && canAccessSection(user.role, 'matches') && <MatchManagement darkMode={darkMode} />}
+        {activeSection === 'voting' && canAccessSection(user.role, 'voting') && <VotingManagement darkMode={darkMode} />}
+        {activeSection === 'news' && canAccessSection(user.role, 'news') && <NewsManagement darkMode={darkMode} />}
+        {activeSection === 'standings' && canAccessSection(user.role, 'standings') && <StandingsManagement darkMode={darkMode} />}
+        {activeSection === 'media' && canAccessSection(user.role, 'media') && <MediaManagement darkMode={darkMode} />}
+        {activeSection === 'banners' && canAccessSection(user.role, 'banners') && <BannerManagement darkMode={darkMode} />}
+        {activeSection === 'settings' && canAccessSection(user.role, 'settings') && <SettingsManagement darkMode={darkMode} />}
         {activeSection === 'profile' && <UserProfile darkMode={darkMode} currentUser={user} onUserUpdate={handleUserUpdate} />}
       </Suspense>
     );
@@ -71,9 +96,11 @@ export default function AdminApp({ currentUser, onLogout }: AdminAppProps) {
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
           activeSection={activeSection}
-          setActiveSection={setActiveSection}
+          setActiveSection={handleSetActiveSection}
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}
+          userRole={user.role}
+          userName={user.name}
         />
 
         {/* Main Content */}
